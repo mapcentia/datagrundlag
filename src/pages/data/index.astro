@@ -1,0 +1,358 @@
+---
+import Base from '../../layouts/Base.astro';
+import {
+  datasets,
+  bySchema,
+  domains,
+  sourceOf,
+  shortTitle,
+  fmtInt,
+  fmtBytes,
+  geomNames,
+  datasetUrl,
+  totals,
+  fmtCompact,
+  fmtDate,
+  hasChanged,
+  changedCount,
+} from '../../lib/catalog';
+
+const groups = bySchema().sort((a, b) => a.source.name.localeCompare(b.source.name, 'da'));
+const domainOrder = Object.keys(domains) as (keyof typeof domains)[];
+const sorted = [...datasets].sort(
+  (a, b) =>
+    sourceOf(a.schema).name.localeCompare(sourceOf(b.schema).name, 'da') ||
+    shortTitle(a).localeCompare(shortTitle(b), 'da'),
+);
+---
+<Base title="Datasæt" description={`Søg i ${totals.datasets} danske grunddatasæt som GeoParquet og FlatGeobuf.`}>
+  <div class="wrap page">
+    <header class="page-head">
+      <h1>Datasæt</h1>
+      <p class="lead">
+        {totals.datasets} datasæt, {fmtCompact(totals.rows)} rækker. {totals.spatial} af dem har geometri og kan åbnes
+        direkte i QGIS. Alle ligger i ETRS89 / UTM zone 32N (EPSG:25832), medmindre andet står på datasættet. Hvert
+        datasæt har historik fra {fmtDate(totals.first)}, og {changedCount} af dem har allerede ændret sig undervejs.
+      </p>
+    </header>
+
+    <div class="layout">
+      <aside class="filters" aria-label="Filtrér efter kilde">
+        <label class="search">
+          <span class="visually-hidden">Søg i datasæt</span>
+          <input type="search" id="q" placeholder="Søg, fx bygning, lokalplan, boring" autocomplete="off" />
+        </label>
+
+        <label class="toggle">
+          <input type="checkbox" id="changed" />
+          <span>Kun datasæt, der har ændret sig ({changedCount})</span>
+        </label>
+
+        <div class="src-select">
+          <label for="src-mobile">Kilde</label>
+          <select id="src-mobile">
+            <option value="">Alle kilder</option>
+            {groups.map((g) => <option value={g.schema}>{g.source.name} ({g.datasets.length})</option>)}
+          </select>
+        </div>
+
+        <nav class="src-list">
+          <button type="button" class="src" data-src="" aria-pressed="true">
+            <span>Alle kilder</span><span class="num muted">{totals.datasets}</span>
+          </button>
+          {domainOrder.map((dk) => (
+            <div class="dgroup" data-domain={dk}>
+              <p class="dname"><span class="swatch" />{domains[dk].name}</p>
+              {groups.filter((g) => g.source.domain === dk).map((g) => (
+                <button type="button" class="src" data-src={g.schema} aria-pressed="false">
+                  <span>{g.source.name}</span><span class="num muted">{g.datasets.length}</span>
+                </button>
+              ))}
+            </div>
+          ))}
+        </nav>
+      </aside>
+
+      <section class="results" aria-live="polite">
+        <p class="count muted"><span id="n">{datasets.length}</span> datasæt</p>
+        <div class="table-scroll">
+          <table class="data catalog">
+            <thead>
+              <tr>
+                <th>Datasæt</th>
+                <th>Kilde</th>
+                <th>Geometri</th>
+                <th class="n">Rækker</th>
+                <th class="n">Snapshots</th>
+                <th class="n">Parquet</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map((d) => {
+                const src = sourceOf(d.schema);
+                return (
+                  <tr
+                    data-schema={d.schema}
+                    data-changed={hasChanged(d) ? '' : undefined}
+                    data-q={`${d.title} ${d.id} ${src.name} ${src.owner}`.toLowerCase()}
+                  >
+                    <td>
+                      <a href={datasetUrl(d)} class="dname-link">{shortTitle(d)}</a>
+                      <code class="id">{d.id}</code>
+                    </td>
+                    <td data-domain={src.domain} class="srccell">
+                      <span class="swatch" />
+                      {src.name}
+                    </td>
+                    <td class="muted">{d.geometry ? geomNames[d.geometry.type] ?? d.geometry.type : 'Tabel'}</td>
+                    <td class="n">{fmtInt(d.rows)}</td>
+                    <td class="n snapcell">
+                      <a href={`${datasetUrl(d)}#historik`} title={hasChanged(d) ? 'Rækketallet har ændret sig mellem snapshots' : undefined}>
+                        {d.snapshots.length}
+                        {hasChanged(d) && <span class="dot" aria-label="ændret" />}
+                      </a>
+                    </td>
+                    <td class="n muted">{fmtBytes(d.assets.parquet?.size)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <p class="empty" hidden>Ingen datasæt matcher. Prøv et andet ord, eller vælg "Alle kilder".</p>
+      </section>
+    </div>
+  </div>
+</Base>
+
+<script>
+  const q = document.querySelector<HTMLInputElement>('#q')!;
+  const rows = [...document.querySelectorAll<HTMLTableRowElement>('.catalog tbody tr')];
+  const buttons = [...document.querySelectorAll<HTMLButtonElement>('.src')];
+  const select = document.querySelector<HTMLSelectElement>('#src-mobile')!;
+  const n = document.querySelector('#n')!;
+  const changed = document.querySelector<HTMLInputElement>('#changed')!;
+  const empty = document.querySelector<HTMLElement>('.empty')!;
+  const params = new URLSearchParams(location.search);
+  let src = params.get('kilde') ?? '';
+  q.value = params.get('q') ?? '';
+  changed.checked = params.has('aendret');
+
+  function apply() {
+    const terms = q.value.toLowerCase().trim().split(/\s+/).filter(Boolean);
+    let shown = 0;
+    for (const r of rows) {
+      const ok =
+        (!src || r.dataset.schema === src) &&
+        (!changed.checked || r.dataset.changed != null) &&
+        terms.every((t) => r.dataset.q!.includes(t));
+      r.hidden = !ok;
+      if (ok) shown++;
+    }
+    n.textContent = shown.toLocaleString('da-DK');
+    empty.hidden = shown > 0;
+    buttons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.src === src)));
+    select.value = src;
+    const p = new URLSearchParams();
+    if (src) p.set('kilde', src);
+    if (q.value) p.set('q', q.value);
+    if (changed.checked) p.set('aendret', '');
+    history.replaceState(null, '', p.size ? `?${p}` : location.pathname);
+  }
+
+  buttons.forEach((b) =>
+    b.addEventListener('click', () => {
+      src = b.dataset.src ?? '';
+      apply();
+    }),
+  );
+  select.addEventListener('change', () => {
+    src = select.value;
+    apply();
+  });
+  q.addEventListener('input', apply);
+  changed.addEventListener('change', apply);
+  apply();
+</script>
+
+<style>
+  .page {
+    padding-top: clamp(2rem, 5vw, 3.5rem);
+  }
+  .page-head h1 {
+    font-size: var(--t-2xl);
+    letter-spacing: -0.03em;
+  }
+  .lead {
+    color: var(--ink-2);
+    max-width: 64ch;
+  }
+  .layout {
+    display: grid;
+    grid-template-columns: 15rem minmax(0, 1fr);
+    gap: 2.5rem;
+    margin-top: 2rem;
+    align-items: start;
+  }
+  .filters {
+    position: sticky;
+    top: 5rem;
+    max-height: calc(100vh - 6rem);
+    overflow-y: auto;
+    padding-right: 0.25rem;
+  }
+  .search input {
+    width: 100%;
+    font: inherit;
+    font-size: var(--t-sm);
+    padding: 0.65rem 0.8rem;
+    border: 1.5px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--sheet);
+    color: var(--ink);
+  }
+  .search input:focus {
+    border-color: var(--ink);
+    outline: none;
+  }
+  .src-select {
+    display: none;
+  }
+  .toggle {
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-start;
+    font-size: var(--t-sm);
+    margin-top: 0.85rem;
+    cursor: pointer;
+    line-height: 1.35;
+  }
+  .toggle input {
+    accent-color: var(--matrikel);
+    margin-top: 0.15rem;
+  }
+  .snapcell a {
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--matrikel);
+  }
+  .src-list {
+    margin-top: 1rem;
+    display: grid;
+    gap: 1rem;
+  }
+  .dname {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: var(--t-xs);
+    color: var(--ink-3);
+    margin: 0 0 0.25rem;
+    font-weight: 600;
+  }
+  .src {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    font: inherit;
+    font-size: var(--t-sm);
+    color: var(--ink);
+    text-align: left;
+    background: none;
+    border: 0;
+    border-radius: 4px;
+    padding: 0.3rem 0.5rem;
+    cursor: pointer;
+  }
+  .src:hover {
+    background: var(--sheet);
+  }
+  .src[aria-pressed='true'] {
+    background: var(--ink);
+    color: var(--fog);
+  }
+  .src[aria-pressed='true'] .muted {
+    color: inherit;
+    opacity: 0.7;
+  }
+  .count {
+    font-size: var(--t-sm);
+    margin: 0 0 0.5rem;
+  }
+  .catalog td {
+    padding-top: 0.6rem;
+    padding-bottom: 0.6rem;
+  }
+  .dname-link {
+    font-weight: 600;
+    text-decoration: none;
+    display: block;
+  }
+  .dname-link:hover {
+    text-decoration: underline;
+    text-decoration-color: var(--matrikel);
+  }
+  .id {
+    font-size: 0.78rem;
+    color: var(--ink-3);
+    background: none !important;
+    padding: 0 !important;
+  }
+  .srccell {
+    white-space: nowrap;
+  }
+  .srccell .swatch {
+    margin-right: 0.4rem;
+  }
+  .empty {
+    padding: 2rem 0;
+    color: var(--ink-2);
+  }
+  @media (max-width: 860px) {
+    .layout {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 1rem;
+    }
+    .filters {
+      position: static;
+      max-height: none;
+      display: grid;
+      gap: 0.75rem;
+    }
+    .src-list {
+      display: none;
+    }
+    .src-select {
+      display: grid;
+      gap: 0.25rem;
+      font-size: var(--t-sm);
+    }
+    .src-select select {
+      font: inherit;
+      padding: 0.55rem;
+      border-radius: var(--radius);
+      border: 1.5px solid var(--line);
+      background: var(--sheet);
+      color: var(--ink);
+    }
+    .catalog th:nth-child(3),
+    .catalog td:nth-child(3),
+    .catalog th:nth-child(6),
+    .catalog td:nth-child(6) {
+      display: none;
+    }
+  }
+  @media (max-width: 520px) {
+    .catalog th:nth-child(2),
+    .catalog td:nth-child(2) {
+      display: none;
+    }
+  }
+</style>

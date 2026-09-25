@@ -1,0 +1,38 @@
+---
+import { datasets, sourceOf } from '../lib/catalog';
+interface Props { id: string }
+const { id } = Astro.props;
+const d = datasets.find((x) => x.id === id);
+const [schema] = id.split('.');
+const src = sourceOf(schema);
+---
+{d ? (
+  <a class="tag" href={`/data/${d.schema}/${d.relation}/`} data-domain={src.domain} title={d.title}>
+    <span class="swatch" />
+    <code>{id}</code>
+  </a>
+) : (
+  <span class="tag"><code>{id}</code></span>
+)}
+
+<style>
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    text-decoration: none;
+    font-size: var(--t-xs);
+    border: 1px solid var(--line);
+    background: var(--sheet);
+    border-radius: 4px;
+    padding: 0.2rem 0.5rem 0.2rem 0.45rem;
+    white-space: nowrap;
+  }
+  .tag:hover {
+    border-color: var(--ink-3);
+  }
+  code {
+    background: none !important;
+    padding: 0 !important;
+  }
+</style>

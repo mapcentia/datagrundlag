@@ -1,0 +1,118 @@
+---
+import CodeBlock from './CodeBlock.astro';
+import DatasetTag from './DatasetTag.astro';
+import { fmtInt } from '../lib/catalog';
+
+interface Props {
+  ex: {
+    title: string;
+    lead: string;
+    datasets: string[];
+    sql: string;
+    rows: Record<string, unknown>[];
+    seconds: number;
+    slug: string;
+    kind?: string;
+  };
+  headingLevel?: 2 | 3;
+}
+const { ex, headingLevel = 3 } = Astro.props;
+const H = `h${headingLevel}` as 'h2' | 'h3';
+const cols = ex.rows.length ? Object.keys(ex.rows[0]) : [];
+const isNum = (v: unknown) => typeof v === 'number';
+// Årstal skal ikke have tusindtalsseparator
+const fmt = (v: unknown, col: string) =>
+  typeof v !== 'number'
+    ? String(v ?? '')
+    : /år$/.test(col)
+      ? String(v)
+      : Number.isInteger(v)
+        ? fmtInt(v)
+        : v.toLocaleString('da-DK', { maximumFractionDigits: 1 });
+---
+<article class="example" id={ex.slug}>
+  <header>
+    <H class="ex-title">{ex.title}</H>
+    <p class="ex-lead">{ex.lead}</p>
+    <ul class="ex-tags" aria-label="Datasæt i forespørgslen">
+      {ex.kind === 'historik' && <li class="kind">Sammenligner to snapshots</li>}
+      {ex.datasets.map((id) => <li><DatasetTag id={id} /></li>)}
+    </ul>
+  </header>
+  <div class="ex-body">
+    <CodeBlock code={ex.sql} caption="DuckDB-forespørgsel" />
+    <div class="ex-result">
+      <p class="ex-result-h">
+        Resultat <span class="muted">({ex.seconds.toLocaleString('da-DK')} s direkte fra S3 på en bærbar)</span>
+      </p>
+      <div class="table-scroll">
+        <table class="data">
+          <thead>
+            <tr>{cols.map((c) => <th class={isNum(ex.rows[0][c]) ? 'n' : ''}>{c.replaceAll('_', ' ')}</th>)}</tr>
+          </thead>
+          <tbody>
+            {ex.rows.map((r) => (
+              <tr>{cols.map((c) => <td class={isNum(r[c]) ? 'n' : ''}>{fmt(r[c], c)}</td>)}</tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</article>
+
+<style>
+  .example {
+    padding: 2.5rem 0;
+    border-top: 1px solid var(--line);
+  }
+  header {
+    max-width: 68ch;
+  }
+  .ex-title {
+    font-size: var(--t-xl);
+    margin-bottom: 0.4rem;
+  }
+  .ex-lead {
+    color: var(--ink-2);
+  }
+  .ex-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1.5rem;
+  }
+  .kind {
+    font-size: var(--t-xs);
+    font-weight: 600;
+    color: var(--fog);
+    background: var(--matrikel);
+    border-radius: 4px;
+    padding: 0.2rem 0.55rem;
+  }
+  .ex-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    gap: 1.75rem;
+    align-items: start;
+  }
+  .ex-result-h {
+    font-size: var(--t-sm);
+    font-weight: 600;
+    color: var(--ink-2);
+    margin-bottom: 0.5rem;
+  }
+  .ex-result-h .muted {
+    font-weight: 400;
+  }
+  .ex-result td:first-child {
+    max-width: 22ch;
+  }
+  @media (max-width: 900px) {
+    .ex-body {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+</style>

@@ -1,0 +1,54 @@
+---
+import { Code } from 'astro:components';
+
+interface Props {
+  code: string;
+  lang?: string;
+  caption?: string;
+}
+const { code, lang = 'sql', caption } = Astro.props;
+---
+<figure class="codeblock">
+  {caption && <figcaption>{caption}</figcaption>}
+  <div class="frame">
+    <Code code={code.trim()} lang={lang as any} theme="css-variables" />
+    <button type="button" class="copy" data-copy={code.trim()} aria-label="Kopiér kode">Kopiér</button>
+  </div>
+</figure>
+
+
+<style>
+  .codeblock {
+    margin: 0;
+    min-width: 0;
+  }
+  figcaption {
+    font-size: var(--t-sm);
+    font-weight: 600;
+    color: var(--ink-2);
+    margin-bottom: 0.5rem;
+  }
+  .frame {
+    position: relative;
+  }
+  .copy {
+    position: absolute;
+    top: 0.55rem;
+    right: 0.55rem;
+    font: 500 0.75rem/1 var(--font);
+    color: #c9d3de;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 4px;
+    padding: 0.35rem 0.55rem;
+    cursor: pointer;
+  }
+  .copy:hover {
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff;
+  }
+  .copy[data-done] {
+    color: #9fd6ae;
+    border-color: #9fd6ae;
+  }
+</style>

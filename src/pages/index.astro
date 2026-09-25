@@ -1,0 +1,301 @@
+---
+import Base from '../layouts/Base.astro';
+import KommuneMap from '../components/KommuneMap.astro';
+import CopyLine from '../components/CopyLine.astro';
+import CodeBlock from '../components/CodeBlock.astro';
+import Example from '../components/Example.astro';
+import SourceChart from '../components/SourceChart.astro';
+import PathAnatomy from '../components/PathAnatomy.astro';
+import HistoryStrip from '../components/HistoryStrip.astro';
+import examplesData from '../data/examples.json';
+import { totals, fmtCompact, fmtBytes, fmtDate, fmtInt, changedCount } from '../lib/catalog';
+
+const examples = examplesData.examples;
+const featured = examples.filter((e) => ['roedlistearter-natura2000', 'forurenet-jord-adresser'].includes(e.slug));
+const timeTravel = examples.find((e) => e.kind === 'historik');
+
+// Et udsnit af datasæt, der har ændret sig, på tværs af kilder
+const historyIds = [
+  'plandatadk.pdk_lokalplan_vedtaget_v',
+  'danmarksarealinformation.bes_naturtyper',
+  'cvr.virksomhed',
+  'naturdatabasen.art_invasivearter',
+  'dkjord.dkjord_v2',
+  'geofa.t_5607_ladefacilitet',
+  'kulturarvsstyrelsen.fortidsminder_punkt_ikkefredet',
+  'plandatadk.pdk_kommuneplantillaeg_forslag_v',
+];
+
+const quickstart = `-- I DuckDB (duckdb.org). Ingen nøgler, ingen konto.
+INSTALL spatial; LOAD spatial;
+INSTALL httpfs;  LOAD httpfs;
+SET s3_region = 'eu-west-1';
+
+SELECT navn, round(ST_Area(the_geom) / 1e6) AS km2
+FROM 's3://gc2-parquet/centia-io/dk/schema=dagi/relation=kommuneinddeling/*/*.parquet'
+QUALIFY _gc2_snapshot_date = max(_gc2_snapshot_date) OVER ()  -- kun nyeste snapshot
+ORDER BY km2 DESC
+LIMIT 5;`;
+---
+<Base>
+  <section class="hero wrap">
+    <div class="hero-text">
+      <h1>Danske grunddata som filer, du selv kan forespørge</h1>
+      <p class="lead">
+        {totals.datasets} datasæt fra {totals.sources} offentlige kilder ligger samlet i én offentlig S3-bucket som
+        GeoParquet og FlatGeobuf. Det dækker adresser, bygninger, matrikler, virksomheder, natur, grundvand og planer.
+        Hvert datasæt gemmes som daterede snapshots, så du også kan gå tilbage i tid. Du behøver ikke API-nøgler
+        eller paginering. Peg DuckDB, QGIS eller Python på filerne, og kombinér dem frit.
+      </p>
+      <CopyLine value="s3://gc2-parquet/centia-io/dk/" />
+      <div class="cta">
+        <a class="btn" href="/data/">Find et datasæt</a>
+        <a class="btn ghost" href="/kom-i-gang/">Kom i gang med DuckDB</a>
+      </div>
+      <dl class="facts">
+        <div><dt>Rækker</dt><dd class="num">{fmtCompact(totals.rows)}</dd></div>
+        <div><dt>GeoParquet</dt><dd class="num">{fmtBytes(totals.bytes)}</dd></div>
+        <div><dt>Snapshots</dt><dd class="num">{fmtInt(totals.snapshots)}</dd></div>
+        <div><dt>Historik siden</dt><dd>{fmtDate(totals.first)}</dd></div>
+      </dl>
+    </div>
+    <div class="hero-map">
+      <KommuneMap />
+    </div>
+  </section>
+
+  <section class="wrap section why">
+    <div class="why-intro">
+      <h2>Registrene hænger sammen. Nu kan du også se det.</h2>
+      <p>
+        Grunddata er designet til at blive koblet: et husnummer peger på en vej, et jordstykke og en kommune. En bygning
+        står på en grund, og en virksomhed har en adresse. Hos de enkelte myndigheder ligger data alligevel i hver sin
+        tjeneste med hver sit API.
+      </p>
+      <p>
+        Her ligger det hele side om side i samme format og samme koordinatsystem (ETRS89 / UTM32). Et join mellem BBR og
+        Naturdatabasen er lige så nemt som et join mellem to tabeller i samme database, for det er i praksis det, det er.
+      </p>
+    </div>
+    <ul class="why-points">
+      <li>
+        <h3>Direkte fra bucketen</h3>
+        <p>DuckDB og GDAL læser kun de bytes, forespørgslen skal bruge. Et spatialt join over millioner af rækker tager sekunder.</p>
+      </li>
+      <li>
+        <h3>Historik på alle datasæt</h3>
+        <p>Hvert datasæt høstes løbende, og gamle snapshots bliver liggende. Du kan læse data, som de så ud på en given dato, og se hvad der er ændret.</p>
+      </li>
+      <li>
+        <h3>Beskrevet med STAC</h3>
+        <p>Et maskinlæsbart katalog med udstrækning, rækketal, skema og links til filerne. Byg dine egne værktøjer oven på det.</p>
+      </li>
+    </ul>
+  </section>
+
+  <section class="wrap section history" id="historik">
+    <div class="history-intro">
+      <h2>Gå tilbage i tid</h2>
+      <p>
+        Myndighedernes tjenester viser som regel kun, hvordan data ser ud i dag. Her bliver hvert snapshot liggende
+        med sin dato, så du kan se et register, som det så ud på en bestemt dag, og sammenligne to datoer.
+      </p>
+      <p>
+        Historikken begynder {fmtDate(totals.first)} og vokser for hvert snapshot. Indtil nu er der {fmtInt(totals.snapshots)}{' '}
+        snapshots, og {changedCount} datasæt har allerede ændret rækketal undervejs.
+      </p>
+      <p>
+        I DuckDB er snapshot-datoen en almindelig kolonne. Med makroen <code>dk_at()</code> læser du et datasæt, som
+        det så ud på en given dato.
+      </p>
+    </div>
+    <HistoryStrip ids={historyIds} />
+  </section>
+
+  {timeTravel && (
+    <section class="wrap">
+      <Example ex={timeTravel} />
+    </section>
+  )}
+
+  <section class="wrap section">
+    <div class="section-head">
+      <h2>Analyser på tværs af registre</h2>
+      <p class="muted">
+        Forespørgslerne herunder køres, hver gang sitet bygges, direkte mod bucketen. Tallene er ægte, og SQL'en kan
+        kopieres ind i din egen DuckDB.
+      </p>
+    </div>
+    {featured.map((ex) => <Example ex={ex} />)}
+    <p class="more"><a href="/eksempler/">Se alle {examples.length} eksempler</a></p>
+  </section>
+
+  <section class="wrap section">
+    <div class="section-head">
+      <h2>Hvad der er i bucketen</h2>
+      <p class="muted">Vælg en kilde for at se dens datasæt.</p>
+    </div>
+    <SourceChart />
+  </section>
+
+  <section class="wrap section">
+    <div class="section-head">
+      <h2>Sådan er stierne bygget op</h2>
+      <p class="muted">
+        Bucketen følger en hive-lignende struktur, så værktøjer som DuckDB, Spark og Polars kan filtrere på kilde,
+        datasæt og dato uden at læse data.
+      </p>
+    </div>
+    <PathAnatomy />
+  </section>
+
+  <section class="wrap section start">
+    <div>
+      <h2>Prøv det på et minut</h2>
+      <p>
+        Installér <a href="https://duckdb.org/docs/installation/">DuckDB</a>, start den og indsæt forespørgslen. Den
+        henter DAGI's kommunegrænser fra bucketen og beregner arealet.
+      </p>
+      <p>
+        Skal du bruge data i QGIS, så åbn FlatGeobuf-filen via dens URL. QGIS henter kun de features, der er inden for
+        kortudsnittet.
+      </p>
+      <a class="btn ghost" href="/kom-i-gang/">Læs hele vejledningen</a>
+    </div>
+    <CodeBlock code={quickstart} />
+  </section>
+</Base>
+
+<style>
+  .hero {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    gap: clamp(2rem, 5vw, 4.5rem);
+    padding-top: clamp(2.5rem, 6vw, 5rem);
+    padding-bottom: 3rem;
+    align-items: start;
+  }
+  .hero h1 {
+    max-width: 13ch;
+    margin-bottom: 1.5rem;
+  }
+  .lead {
+    font-size: var(--t-lg);
+    line-height: 1.5;
+    color: var(--ink-2);
+    max-width: 44ch;
+    margin-bottom: 1.75rem;
+  }
+  .cta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin: 1.25rem 0 2.25rem;
+  }
+  .facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem 2.5rem;
+    margin: 0;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--line);
+  }
+  .facts dt {
+    font-size: var(--t-xs);
+    color: var(--ink-3);
+  }
+  .facts dd {
+    margin: 0;
+    font-weight: 700;
+    font-size: var(--t-lg);
+    letter-spacing: -0.01em;
+  }
+  .hero-map {
+    padding-top: 0.5rem;
+  }
+
+  .section {
+    padding-top: clamp(3.5rem, 8vw, 6rem);
+  }
+  .section-head {
+    max-width: 62ch;
+    margin-bottom: 2rem;
+  }
+  .section-head p {
+    font-size: var(--t-md);
+  }
+
+  .why {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    gap: clamp(2rem, 6vw, 5rem);
+  }
+  .why-intro p {
+    color: var(--ink-2);
+    max-width: 58ch;
+  }
+  .why-points {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 1.5rem;
+    align-content: start;
+  }
+  .why-points li {
+    padding-left: 1.25rem;
+    border-left: 2px solid var(--matrikel);
+  }
+  .why-points h3 {
+    font-size: var(--t-md);
+    margin-bottom: 0.25rem;
+  }
+  .why-points p {
+    color: var(--ink-2);
+    margin: 0;
+    font-size: var(--t-sm);
+  }
+
+  .history {
+    display: grid;
+    grid-template-columns: minmax(0, 0.75fr) minmax(0, 1.25fr);
+    gap: clamp(2rem, 5vw, 4rem);
+    align-items: start;
+    padding-bottom: 1rem;
+  }
+  .history-intro p {
+    color: var(--ink-2);
+    max-width: 52ch;
+  }
+
+  .more {
+    border-top: 1px solid var(--line);
+    padding-top: 1.5rem;
+    font-weight: 600;
+  }
+
+  .start {
+    display: grid;
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+    gap: clamp(2rem, 5vw, 4rem);
+    align-items: start;
+  }
+  .start p {
+    color: var(--ink-2);
+    max-width: 50ch;
+  }
+
+  @media (max-width: 600px) {
+    .lead {
+      font-size: var(--t-md);
+    }
+  }
+  @media (max-width: 960px) {
+    .hero,
+    .history,
+    .why,
+    .start {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+</style>

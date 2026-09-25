@@ -1,0 +1,202 @@
+---
+import { datasets, sourceOf, shortTitle, datasetUrl, fmtInt, fmtDate, type Dataset } from '../lib/catalog';
+
+interface Props {
+  ids?: string[];
+  dataset?: Dataset;
+}
+const { ids = [], dataset } = Astro.props;
+const list = dataset ? [dataset] : ids.map((id) => datasets.find((d) => d.id === id)).filter((d): d is Dataset => !!d);
+
+// Fælles datoakse fra første til seneste snapshot i hele bucketen
+const allDates = [...new Set(datasets.flatMap((d) => d.snapshots))].sort();
+const first = new Date(allDates[0]);
+const last = new Date(allDates.at(-1)!);
+const days: string[] = [];
+for (let t = first; t <= last; t = new Date(t.getTime() + 864e5)) days.push(t.toISOString().slice(0, 10));
+const short = (iso: string) => new Date(iso + 'T12:00:00Z').toLocaleDateString('da-DK', { day: 'numeric', month: 'short' });
+
+function rowsFor(d: Dataset) {
+  const byDate = new Map(d.history.map((h) => [h.date, h.rows]));
+  let prev: number | null = null;
+  const cells = days.map((day) => {
+    if (!byDate.has(day)) return { day, kind: 'none' as const };
+    const rows = byDate.get(day) ?? null;
+    const delta = prev != null && rows != null ? rows - prev : 0;
+    const kind = prev == null ? ('first' as const) : delta !== 0 ? ('change' as const) : ('same' as const);
+    prev = rows;
+    return { day, kind, rows, delta };
+  });
+  const hs = [...d.history].sort((a, b) => a.date.localeCompare(b.date));
+  const net = (hs.at(-1)?.rows ?? 0) - (hs[0]?.rows ?? 0);
+  return { cells, net, n: hs.length };
+}
+const sign = (n: number) => (n > 0 ? `+${fmtInt(n)}` : n < 0 ? `−${fmtInt(-n)}` : '±0');
+---
+<figure class="hstrip" style={`--days:${days.length}`}>
+  <div class="grid" role="table" aria-label="Snapshots pr. dag">
+    <div class="row head" role="row">
+      <span class="name" role="columnheader">{dataset ? 'Snapshot' : 'Datasæt'}</span>
+      <span class="cells" role="presentation">
+        {days.map((day, i) => (
+          <span class="tick" role="columnheader">{i === 0 || i === days.length - 1 || i % 2 === 0 ? short(day) : ''}</span>
+        ))}
+      </span>
+      <span class="net" role="columnheader">Ændring</span>
+    </div>
+    {list.map((d) => {
+      const { cells, net, n } = rowsFor(d);
+      return (
+        <div class="row" role="row" data-domain={sourceOf(d.schema).domain}>
+          <span class="name" role="rowheader">
+            {dataset ? `${n} snapshots` : <a href={datasetUrl(d)}>{shortTitle(d)}</a>}
+            {!dataset && <span class="src">{sourceOf(d.schema).name}</span>}
+          </span>
+          <span class="cells">
+            {cells.map((c) =>
+              c.kind === 'none' ? (
+                <span class="cell none" role="cell" aria-label={`${short(c.day)}: intet snapshot`} />
+              ) : (
+                <span
+                  class={`cell ${c.kind}`}
+                  role="cell"
+                  title={`${fmtDate(c.day)}: ${fmtInt(c.rows)} rækker${c.kind === 'change' ? ` (${sign(c.delta!)})` : ''}`}
+                  aria-label={`${short(c.day)}: ${fmtInt(c.rows)} rækker${c.kind === 'change' ? `, ${sign(c.delta!)}` : ''}`}
+                />
+              ),
+            )}
+          </span>
+          <span class="net num" role="cell">{sign(net)}</span>
+        </div>
+      );
+    })}
+  </div>
+  <figcaption>
+    <span><i class="k first" /> Snapshot</span>
+    <span><i class="k change" /> Rækketallet ændrede sig</span>
+    <span><i class="k none" /> Intet snapshot den dag</span>
+  </figcaption>
+</figure>
+
+<style>
+  .hstrip {
+    margin: 0;
+    min-width: 0;
+  }
+  .grid {
+    display: grid;
+    gap: 0.15rem;
+    overflow-x: auto;
+  }
+  .row {
+    display: grid;
+    grid-template-columns: minmax(9rem, 17rem) minmax(calc(var(--days) * 1.35rem), 1fr) 5.5rem;
+    gap: 1rem;
+    align-items: center;
+    padding: 0.35rem 0;
+    border-bottom: 1px solid var(--line-2);
+  }
+  .row.head {
+    border-bottom-color: var(--line);
+    font-size: var(--t-xs);
+    color: var(--ink-3);
+    padding-bottom: 0.5rem;
+  }
+  .name {
+    display: grid;
+    line-height: 1.25;
+    min-width: 0;
+    font-size: var(--t-sm);
+  }
+  .name a {
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .name a:hover {
+    text-decoration: underline;
+    text-decoration-color: var(--matrikel);
+  }
+  .src {
+    font-size: var(--t-xs);
+    color: var(--ink-3);
+  }
+  .cells {
+    display: grid;
+    grid-template-columns: repeat(var(--days), 1fr);
+    align-items: center;
+    justify-items: center;
+  }
+  .tick {
+    white-space: nowrap;
+    font-size: 0.7rem;
+  }
+  .cell {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+  }
+  .cell.first,
+  .cell.same,
+  .k.first {
+    background: color-mix(in srgb, var(--ink) 35%, transparent);
+  }
+  .cell.change,
+  .k.change {
+    background: var(--matrikel);
+    box-shadow: 0 0 0 2px var(--fog), 0 0 0 3.5px var(--matrikel);
+  }
+  .cell.none,
+  .k.none {
+    width: 6px;
+    height: 6px;
+    background: var(--line);
+  }
+  .net {
+    text-align: right;
+    font-weight: 650;
+    font-size: var(--t-sm);
+  }
+  .head .net {
+    font-weight: 400;
+    font-size: var(--t-xs);
+  }
+  figcaption {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1.5rem;
+    font-size: var(--t-xs);
+    color: var(--ink-2);
+    margin-top: 0.9rem;
+  }
+  figcaption span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .k {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+  .k.change {
+    box-shadow: 0 0 0 2px var(--fog), 0 0 0 3px var(--matrikel);
+  }
+  @media (max-width: 640px) {
+    .row {
+      grid-template-columns: minmax(0, 1fr) 4rem;
+      grid-template-areas: 'name net' 'cells cells';
+      gap: 0.35rem 0.75rem;
+    }
+    .name { grid-area: name; }
+    .net { grid-area: net; }
+    .cells { grid-area: cells; }
+    .head .name,
+    .head .net {
+      display: none;
+    }
+  }
+</style>

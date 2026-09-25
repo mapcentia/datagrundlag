@@ -1,0 +1,332 @@
+---
+import Base from '../layouts/Base.astro';
+import CodeBlock from '../components/CodeBlock.astro';
+import CopyLine from '../components/CopyLine.astro';
+import init from '../../scripts/duckdb/init.sql?raw';
+
+const sections = [
+  { id: 'duckdb', label: 'DuckDB' },
+  { id: 'historik', label: 'Gå tilbage i tid' },
+  { id: 'qgis', label: 'QGIS' },
+  { id: 'python', label: 'Python' },
+  { id: 'stac', label: 'STAC og automatisering' },
+  { id: 'tips', label: 'Hurtige forespørgsler' },
+];
+
+const direct = `-- Uden makro: læs alle snapshots og vælg det nyeste
+SELECT *
+FROM 's3://gc2-parquet/centia-io/dk/schema=dar/relation=postnummer/*/*.parquet'
+QUALIFY _gc2_snapshot_date = max(_gc2_snapshot_date) OVER ();`;
+
+const history = `-- Datasættet, som det så ud på en bestemt dato
+SELECT count(*) FROM dk_at('plandatadk', 'pdk_lokalplan_vedtaget_v', '2026-09-17');
+
+-- Alle snapshots på én gang: datoen er en almindelig kolonne
+SELECT _gc2_snapshot_date AS dato, count(*) AS rækker
+FROM dk_alle('plandatadk', 'pdk_lokalplan_vedtaget_v')
+GROUP BY ALL
+ORDER BY dato;`;
+
+const diff = `-- Hvad er kommet til, og hvad er forsvundet mellem to datoer?
+SELECT 'ny' AS ændring, planid, kommunenavn, plannavn
+FROM dk('plandatadk', 'pdk_lokalplan_vedtaget_v')
+ANTI JOIN dk_at('plandatadk', 'pdk_lokalplan_vedtaget_v', '2026-09-17') USING (planid)
+UNION ALL
+SELECT 'fjernet', planid, kommunenavn, plannavn
+FROM dk_at('plandatadk', 'pdk_lokalplan_vedtaget_v', '2026-09-17')
+ANTI JOIN dk('plandatadk', 'pdk_lokalplan_vedtaget_v') USING (planid);`;
+
+const rawHistory = `-- Uden makroer: læs alle snapshots via stien
+SELECT _gc2_snapshot_date, count(*)
+FROM 's3://gc2-parquet/centia-io/dk/schema=geodanmark/relation=kyst/*/*.parquet'
+GROUP BY ALL;`;
+
+const exportSql = `-- Gem et udtræk lokalt som GeoPackage, GeoJSON eller Parquet
+SET geometry_always_xy = true;
+
+COPY (SELECT navn, the_geom FROM dk('dagi', 'regionsinddeling'))
+TO 'regioner.gpkg' WITH (FORMAT gdal, DRIVER 'GPKG', SRS 'EPSG:25832');
+
+COPY (SELECT * FROM dk('bbr', 'bygning') WHERE kommunekode = '0101')
+TO 'bygninger_kbh.parquet';`;
+
+const py = `import duckdb
+
+con = duckdb.connect()
+con.sql(open("init.sql").read())  # samme init.sql som i DuckDB-afsnittet
+
+df = con.sql("""
+    SELECT k.navn, count(*) AS fredede_bygninger
+    FROM dk('kulturarvsstyrelsen', 'bygning_fredede') b
+    JOIN dk('dagi', 'kommuneinddeling') k ON ST_Intersects(b.the_geom, k.the_geom)
+    GROUP BY ALL ORDER BY 2 DESC
+""").df()`;
+
+const gpd = `import geopandas as gpd
+from pyarrow import fs
+
+s3 = fs.S3FileSystem(anonymous=True, region="eu-west-1")
+
+# GeoParquet: stien uden "s3://", og et anonymt filsystem
+gdf = gpd.read_parquet("gc2-parquet/centia-io/dk/schema=.../data-....parquet", filesystem=s3)
+
+# FlatGeobuf over HTTPS, kun et udsnit (EPSG:25832)
+gdf = gpd.read_file("https://gc2-parquet.s3.amazonaws.com/.../data-....fgb",
+                    bbox=(720000, 6170000, 730000, 6180000))`;
+
+const stac = `# Hele kataloget: ét link pr. datasæt
+curl -s https://gc2-parquet.s3.amazonaws.com/centia-io/dk/catalog.json
+
+# Nyeste snapshot af et datasæt, med stier til filerne
+curl -s https://gc2-parquet.s3.amazonaws.com/centia-io/dk/schema=dar/relation=adresse/latest.json
+
+# Eller list bucketen direkte
+aws s3 ls --no-sign-request s3://gc2-parquet/centia-io/dk/schema=dar/`;
+
+const latest = `{
+  "collection": "dar.adressepunkt",
+  "snapshot_date": "2026-09-22",
+  "item": "./_gc2_snapshot_date=2026-09-22/item.json",
+  "assets": {
+    "data":       { "href": "./_gc2_snapshot_date=2026-09-22/data-….parquet" },
+    "flatgeobuf": { "href": "./_gc2_snapshot_date=2026-09-22/data-….fgb" },
+    "metadata":   { "href": "./_gc2_snapshot_date=2026-09-22/metadata-….json" }
+  }
+}`;
+
+const bbox = `-- the_geom_bbox er en GeoParquet 1.1-kolonne med hver features bbox.
+-- Filtrér på den først, så springer DuckDB hele rækkegrupper over.
+SELECT count(*)
+FROM dk('dar', 'adressepunkt')
+WHERE the_geom_bbox.xmin BETWEEN 720000 AND 730000
+  AND the_geom_bbox.ymin BETWEEN 6170000 AND 6180000;`;
+---
+<Base title="Kom i gang" description="Sådan bruger du datagrundlag.dk fra DuckDB, QGIS, Python og GDAL. Ingen konto og ingen nøgler.">
+  <div class="wrap page">
+    <header class="head">
+      <h1>Kom i gang</h1>
+      <p class="lead">
+        Alt ligger i én offentlig S3-bucket i regionen <code>eu-west-1</code>. Du skal ikke oprette en konto eller
+        bruge nøgler. Du kan læse filerne med alt, der forstår Parquet, FlatGeobuf, S3 eller HTTPS.
+      </p>
+      <CopyLine value="s3://gc2-parquet/centia-io/dk/" />
+    </header>
+
+    <div class="layout">
+      <nav class="toc" aria-label="På denne side">
+        <ul>
+          {sections.map((s) => <li><a href={`#${s.id}`}>{s.label}</a></li>)}
+        </ul>
+      </nav>
+
+      <div class="content">
+        <section id="duckdb">
+          <h2>DuckDB</h2>
+          <p>
+            <a href="https://duckdb.org/docs/installation/">DuckDB</a> er den hurtigste vej ind. Den læser GeoParquet
+            direkte fra S3, forstår geometrikolonnen og kan joine datasæt fra forskellige kilder i én forespørgsel.
+          </p>
+          <h3>1. Indlæs udvidelser og makroen <code>dk()</code></h3>
+          <p>
+            Filnavnene skifter ved hvert snapshot. Makroen finder selv det nyeste, så du kan skrive{' '}
+            <code>dk('bbr', 'bygning')</code> i stedet for en lang sti. Læg blokken i <code>~/.duckdbrc</code>, så
+            indlæses den hver gang, DuckDB starter.
+          </p>
+          <CodeBlock code={init} caption="init.sql" />
+          <h3>2. Forespørg</h3>
+          <CodeBlock code={`SELECT navn, kommunekode FROM dk('dagi', 'kommuneinddeling') ORDER BY navn;`} />
+          <p>Du kan også læse stierne direkte uden makroen:</p>
+          <CodeBlock code={direct} />
+          <h3>3. Gem resultatet</h3>
+          <CodeBlock code={exportSql} />
+        </section>
+
+        <section id="historik">
+          <h2>Gå tilbage i tid</h2>
+          <p>
+            Hvert datasæt høstes løbende, og hvert snapshot gemmes i sin egen mappe med datoen i navnet:
+            <code>_gc2_snapshot_date=2026-09-17/</code>. Gamle snapshots slettes ikke, så du kan læse et register, som det
+            så ud på en bestemt dag, følge det over tid og finde ud af, hvad der er ændret.
+          </p>
+          <p>
+            <code>dk_at()</code> fra <code>init.sql</code> giver dig det seneste snapshot på eller før en dato.
+            <code>dk_alle()</code> giver dig alle snapshots med datoen som kolonne.
+          </p>
+          <CodeBlock code={history} />
+          <p>
+            Når datasættet har en stabil nøgle, fx <code>planid</code>, <code>id_lokalid</code> eller{' '}
+            <code>cvrnummer</code>, kan to snapshots sammenlignes med et anti-join:
+          </p>
+          <CodeBlock code={diff} />
+          <p>
+            Makroerne er kun genveje. Snapshot-mapperne følger hive-konventionen, så DuckDB, Polars, Spark og pyarrow
+            giver dig datoen som kolonne, når du læser med jokertegn:
+          </p>
+          <CodeBlock code={rawHistory} />
+          <p class="muted">
+            Historikken begynder 17. september 2026. Hvor ofte et datasæt høstes, afhænger af kilden. Se det enkelte
+            datasæts side for de snapshots, der findes. Bemærk også, at mange grunddataregistre selv er bitemporale
+            (<code>registreringfra</code>/<code>virkningfra</code>) og derfor har deres egen historik i kolonnerne.
+            Snapshots supplerer den med et øjebliksbillede af, hvad kilden udstillede den dag.
+          </p>
+        </section>
+
+        <section id="qgis">
+          <h2>QGIS</h2>
+          <p>
+            Brug FlatGeobuf-filerne i QGIS. De har et rumligt indeks, så QGIS kun henter de features, der er i
+            kortudsnittet. Selv store lag som matrikelskel og BBR-bygninger åbner hurtigt.
+          </p>
+          <ol class="steps">
+            <li>Find datasættet i <a href="/data/">kataloget</a> og kopiér FlatGeobuf-URL'en.</li>
+            <li>Vælg <strong>Lag › Tilføj lag › Tilføj vektorlag</strong> i QGIS.</li>
+            <li>Vælg kildetypen <strong>Protokol: HTTP(S), cloud osv.</strong>, indsæt URL'en og tryk <strong>Tilføj</strong>.</li>
+          </ol>
+          <p>
+            Vil du hellere arbejde med GeoParquet, kan QGIS 3.34+ åbne filerne, når GDAL er bygget med Parquet-driveren.
+            Det er den i OSGeo4W-installationen på Windows og i conda-forge. Vælg kildetypen <strong>Fil</strong> og
+            indsæt <code>/vsicurl/</code> foran HTTPS-URL'en.
+          </p>
+          <p class="muted">
+            Husk, at URL'en peger på et bestemt snapshot. Når datasættet høstes igen, ligger det nye snapshot under et nyt
+            filnavn, mens det gamle bliver liggende.
+          </p>
+        </section>
+
+        <section id="python">
+          <h2>Python</h2>
+          <p>Med DuckDB i Python kan du genbruge SQL'en fra eksemplerne og få resultatet som en DataFrame:</p>
+          <CodeBlock code={py} lang="python" caption="pip install duckdb" />
+          <p>GeoPandas kan læse begge formater direkte:</p>
+          <CodeBlock code={gpd} lang="python" caption="pip install geopandas pyarrow" />
+        </section>
+
+        <section id="stac">
+          <h2>STAC og automatisering</h2>
+          <p>
+            Bucketen er beskrevet som et <a href="https://stacspec.org/">STAC</a>-katalog. <code>catalog.json</code>{' '}
+            linker til en <code>collection.json</code> pr. datasæt, og hvert snapshot har en <code>item.json</code> med
+            udstrækning, rækketal, skemaversion og links til filerne. Du kan bruge værktøjer som{' '}
+            <code>pystac</code> og STAC Browser, eller du kan hente JSON'en selv.
+          </p>
+          <CodeBlock code={stac} lang="bash" />
+          <p>
+            Den nemmeste måde at finde de aktuelle filer på er <code>latest.json</code>, som ligger i hvert datasæts mappe:
+          </p>
+          <CodeBlock code={latest} lang="json" caption="latest.json" />
+        </section>
+
+        <section id="tips">
+          <h2>Hurtige forespørgsler</h2>
+          <ul class="tips">
+            <li>
+              <strong>Vælg kun de kolonner, du skal bruge.</strong> Parquet er kolonnebaseret, så{' '}
+              <code>SELECT navn</code> henter en brøkdel af, hvad <code>SELECT *</code> gør.
+            </li>
+            <li>
+              <strong>Filtrér på bbox før geometri.</strong> Hver fil har en <code>the_geom_bbox</code>-kolonne, som
+              DuckDB kan bruge til at springe rækkegrupper over.
+            </li>
+            <li>
+              <strong>Gem mellemresultater lokalt.</strong> Skal du bruge det samme udtræk mange gange, så kopier det til en
+              lokal tabel med <code>CREATE TABLE … AS</code>.
+            </li>
+            <li>
+              <strong>Koordinatsystemet er EPSG:25832.</strong> Afstande og arealer er i meter, så{' '}
+              <code>ST_Area</code> og <code>ST_DWithin</code> virker direkte uden transformation.
+            </li>
+          </ul>
+          <CodeBlock code={bbox} />
+        </section>
+      </div>
+    </div>
+  </div>
+</Base>
+
+<style>
+  .page {
+    padding-top: clamp(2rem, 5vw, 3.5rem);
+  }
+  .head {
+    max-width: 68ch;
+    margin-bottom: 3rem;
+  }
+  h1 {
+    font-size: var(--t-2xl);
+    letter-spacing: -0.03em;
+  }
+  .lead {
+    color: var(--ink-2);
+  }
+  .layout {
+    display: grid;
+    grid-template-columns: 12rem minmax(0, 1fr);
+    gap: 3rem;
+    align-items: start;
+  }
+  .toc {
+    position: sticky;
+    top: 5.5rem;
+  }
+  .toc ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 0.5rem;
+    font-size: var(--t-sm);
+    border-left: 2px solid var(--line);
+  }
+  .toc a {
+    display: block;
+    padding-left: 0.9rem;
+    text-decoration: none;
+    color: var(--ink-2);
+  }
+  .toc a:hover {
+    color: var(--ink);
+  }
+  .content {
+    max-width: 52rem;
+  }
+  .content section + section {
+    margin-top: 4rem;
+    padding-top: 3rem;
+    border-top: 1px solid var(--line);
+  }
+  .content h2 {
+    font-size: var(--t-xl);
+  }
+  .content h3 {
+    font-size: var(--t-md);
+    margin: 2rem 0 0.5rem;
+  }
+  .content p,
+  .steps,
+  .tips {
+    max-width: 68ch;
+  }
+  .content :global(.codeblock) {
+    margin: 1rem 0 1.25rem;
+  }
+  .steps {
+    padding-left: 1.25rem;
+    display: grid;
+    gap: 0.4rem;
+  }
+  .tips {
+    padding-left: 1.1rem;
+    display: grid;
+    gap: 0.9rem;
+    margin-bottom: 1.5rem;
+  }
+  @media (max-width: 860px) {
+    .layout {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 1rem;
+    }
+    .toc {
+      position: static;
+    }
+  }
+</style>

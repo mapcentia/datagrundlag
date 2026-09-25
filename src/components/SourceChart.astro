@@ -1,0 +1,118 @@
+---
+import { bySchema, domains, fmtCompact, fmtInt, fmtBytes } from '../lib/catalog';
+const groups = bySchema();
+const max = Math.max(...groups.map((g) => g.rows));
+// Kvadratrodsskala: små kilder bliver synlige uden at lyve om rækkefølgen
+const w = (n: number) => Math.max(0.6, Math.sqrt(n / max) * 100);
+---
+<figure class="sources">
+  <ul class="legend" aria-label="Domæner">
+    {Object.entries(domains).map(([key, d]) => (
+      <li data-domain={key}><span class="swatch" />{d.name}</li>
+    ))}
+  </ul>
+  <ol class="bars">
+    {groups.map((g) => (
+      <li data-domain={g.source.domain}>
+        <a href={`/data/?kilde=${g.schema}`} class="row">
+          <span class="label">
+            <strong>{g.source.name}</strong>
+            <span class="muted">{g.source.owner}</span>
+          </span>
+          <span class="track" title={`${fmtInt(g.rows)} rækker`}>
+            <span class="bar" style={`width:${w(g.rows)}%`} />
+          </span>
+          <span class="val num">{fmtCompact(g.rows)}</span>
+          <span class="meta num muted">{g.datasets.length} datasæt, {fmtBytes(g.bytes)}</span>
+        </a>
+      </li>
+    ))}
+  </ol>
+  <figcaption class="muted">
+    Rækker pr. kilde i seneste snapshot, vist på kvadratrodsskala. Tal fra STAC-kataloget i bucketen.
+  </figcaption>
+</figure>
+
+<style>
+  .sources {
+    margin: 0;
+  }
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1.25rem;
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1.25rem;
+    font-size: var(--t-sm);
+    color: var(--ink-2);
+  }
+  .legend li {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+  }
+  .bars {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .row {
+    display: grid;
+    grid-template-columns: minmax(10rem, 15rem) minmax(0, 1fr) 5.5rem 10rem;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.45rem 0.25rem;
+    text-decoration: none;
+    border-radius: 4px;
+  }
+  .row:hover {
+    background: var(--sheet);
+  }
+  .label {
+    display: grid;
+    line-height: 1.25;
+    min-width: 0;
+  }
+  .label strong {
+    font-weight: 650;
+  }
+  .label .muted {
+    font-size: var(--t-xs);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .track {
+    height: 14px;
+    display: block;
+  }
+  .bar {
+    display: block;
+    height: 100%;
+    background: var(--c);
+    border-radius: 0 4px 4px 0;
+  }
+  .val {
+    text-align: right;
+    font-weight: 600;
+  }
+  .meta {
+    font-size: var(--t-xs);
+  }
+  figcaption {
+    font-size: var(--t-xs);
+    margin-top: 1rem;
+  }
+  @media (max-width: 760px) {
+    .row {
+      grid-template-columns: minmax(0, 1fr) 5rem;
+      grid-template-areas: 'label val' 'track track';
+      gap: 0.3rem 0.75rem;
+    }
+    .label { grid-area: label; }
+    .val { grid-area: val; }
+    .track { grid-area: track; height: 8px; }
+    .meta { display: none; }
+  }
+</style>

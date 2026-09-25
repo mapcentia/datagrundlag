@@ -1,0 +1,322 @@
+{
+ "generated": "2026-09-25T08:44:03.239Z",
+ "examples": [
+  {
+   "title": "Hvilke Natura 2000-områder rummer flest rødlistede arter?",
+   "datasets": [
+    "naturdatabasen.art_roedlistearter",
+    "danmarksarealinformation.habitat_omr"
+   ],
+   "lead": "278.000 fund af rødlistearter fra Naturdatabasen krydset med Miljøstyrelsens habitatområder. Et punkt-i-polygon-join på tværs af to kilder.",
+   "sql": "SELECT h.objektnavn                         AS habitatområde,\n       count(DISTINCT r.videnskabeligtnavn) AS rødlistearter,\n       count(*)                             AS fund\nFROM dk('naturdatabasen', 'art_roedlistearter') r\nJOIN dk('danmarksarealinformation', 'habitat_omr') h\n  ON ST_Intersects(r.the_geom, h.the_geom)\nGROUP BY ALL\nORDER BY rødlistearter DESC\nLIMIT 8;",
+   "rows": [
+    {
+     "habitatområde": "Lovns Bredning, Hjarbæk Fjord og Skals, Simested og Nørre Ådal, Skravad Bæk",
+     "rødlistearter": 180,
+     "fund": 2737
+    },
+    {
+     "habitatområde": "Smålandsfarvandet nord for Lolland, Guldborg Sund, Bøtø Nor, Hyllekrog-Røds",
+     "rødlistearter": 163,
+     "fund": 5280
+    },
+    {
+     "habitatområde": "Sejerø Bugt og Saltbæk Vig",
+     "rødlistearter": 154,
+     "fund": 4387
+    },
+    {
+     "habitatområde": "Roskilde Fjord",
+     "rødlistearter": 140,
+     "fund": 2963
+    },
+    {
+     "habitatområde": "Vadehavet med Ribe Å, Tved Å og Varde Å vest for Varde",
+     "rødlistearter": 138,
+     "fund": 73341
+    },
+    {
+     "habitatområde": "Løgstør Bredning, Vejlerne og Bulbjerg",
+     "rødlistearter": 137,
+     "fund": 3864
+    },
+    {
+     "habitatområde": "Rold Skov, Lindenborg Ådal og Madum Sø",
+     "rødlistearter": 125,
+     "fund": 2526
+    },
+    {
+     "habitatområde": "Almindingen, Ølene og Paradisbakkerne",
+     "rødlistearter": 123,
+     "fund": 805
+    }
+   ],
+   "seconds": 4.8,
+   "slug": "roedlistearter-natura2000"
+  },
+  {
+   "title": "Hvor mange adresser ligger på kortlagt forurenet jord?",
+   "datasets": [
+    "dar.husnummer",
+    "dar.adressepunkt",
+    "dkjord.dkjord_v2",
+    "dagi.kommuneinddeling"
+   ],
+   "lead": "Gældende adgangsadresser fra DAR lagt oven på V2-kortlagte arealer fra regionernes jordforureningsregister og fordelt på DAGI-kommuner.",
+   "sql": "WITH adresser AS (\n  SELECT h.id_lokalid AS id, h.kommuneinddeling, p.the_geom\n  FROM dk('dar', 'husnummer') h\n  JOIN dk('dar', 'adressepunkt') p ON p.id_lokalid = h.adgangspunkt\n  WHERE h.status = '3'  -- gældende\n)\nSELECT k.navn                                     AS kommune,\n       count(DISTINCT a.id)                       AS adresser,\n       count(DISTINCT a.id) FILTER (v.gid NOTNULL) AS på_v2_jord,\n       round(100.0 * på_v2_jord / adresser, 1)    AS procent\nFROM adresser a\nJOIN dk('dagi', 'kommuneinddeling') k ON k.id_lokalid = a.kommuneinddeling\nLEFT JOIN dk('dkjord', 'dkjord_v2') v ON ST_Intersects(a.the_geom, v.the_geom)\nGROUP BY ALL\nORDER BY procent DESC\nLIMIT 8;",
+   "rows": [
+    {
+     "kommune": "København",
+     "adresser": 83959,
+     "på_v2_jord": 10688,
+     "procent": 12.7
+    },
+    {
+     "kommune": "Frederiksberg",
+     "adresser": 9584,
+     "på_v2_jord": 1116,
+     "procent": 11.6
+    },
+    {
+     "kommune": "Tårnby",
+     "adresser": 14413,
+     "på_v2_jord": 1019,
+     "procent": 7.1
+    },
+    {
+     "kommune": "Rødovre",
+     "adresser": 12651,
+     "på_v2_jord": 605,
+     "procent": 4.8
+    },
+    {
+     "kommune": "Gladsaxe",
+     "adresser": 19836,
+     "på_v2_jord": 917,
+     "procent": 4.6
+    },
+    {
+     "kommune": "Brøndby",
+     "adresser": 9984,
+     "på_v2_jord": 386,
+     "procent": 3.9
+    },
+    {
+     "kommune": "Herlev",
+     "adresser": 10648,
+     "på_v2_jord": 371,
+     "procent": 3.5
+    },
+    {
+     "kommune": "Hillerød",
+     "adresser": 20496,
+     "på_v2_jord": 670,
+     "procent": 3.3
+    }
+   ],
+   "seconds": 6,
+   "slug": "forurenet-jord-adresser"
+  },
+  {
+   "title": "Hvor står landets ældste bygningsmasse?",
+   "datasets": [
+    "bbr.bygning",
+    "dagi.kommuneinddeling"
+   ],
+   "lead": "4,8 millioner opførte bygninger fra BBR grupperet på kommunekode og beriget med kommunenavne fra DAGI. Et almindeligt join, men uden en eneste API-kaldsrunde.",
+   "sql": "SELECT k.navn                                             AS kommune,\n       count(*)                                           AS bygninger,\n       median(try_cast(b.byg026opførelsesår AS INT))::INT AS median_opførelsesår,\n       count(*) FILTER (try_cast(b.byg026opførelsesår AS INT) < 1900) AS før_1900\nFROM dk('bbr', 'bygning') b\nJOIN dk('dagi', 'kommuneinddeling') k USING (kommunekode)\nWHERE b.status = '6'  -- opført\n  AND try_cast(b.byg026opførelsesår AS INT) BETWEEN 1000 AND 2030\nGROUP BY ALL\nORDER BY median_opførelsesår\nLIMIT 8;",
+   "rows": [
+    {
+     "kommune": "Ærø",
+     "bygninger": 11577,
+     "median_opførelsesår": 1924,
+     "før_1900": 4006
+    },
+    {
+     "kommune": "Frederiksberg",
+     "bygninger": 9492,
+     "median_opførelsesår": 1934,
+     "før_1900": 1797
+    },
+    {
+     "kommune": "Gentofte",
+     "bygninger": 31834,
+     "median_opførelsesår": 1936,
+     "før_1900": 7159
+    },
+    {
+     "kommune": "København",
+     "bygninger": 82257,
+     "median_opførelsesår": 1950,
+     "før_1900": 11613
+    },
+    {
+     "kommune": "Bornholm",
+     "bygninger": 62472,
+     "median_opførelsesår": 1951,
+     "før_1900": 15736
+    },
+    {
+     "kommune": "Lolland",
+     "bygninger": 60195,
+     "median_opførelsesår": 1955,
+     "før_1900": 14444
+    },
+    {
+     "kommune": "Lyngby-Taarbæk",
+     "bygninger": 23615,
+     "median_opførelsesår": 1958,
+     "før_1900": 1673
+    },
+    {
+     "kommune": "Langeland",
+     "bygninger": 26238,
+     "median_opførelsesår": 1960,
+     "før_1900": 4784
+    }
+   ],
+   "seconds": 2.6,
+   "slug": "bygningsalder-kommuner"
+  },
+  {
+   "title": "Hvor er der flest ladepunkter pr. adresse?",
+   "datasets": [
+    "geofa.t_5607_ladefacilitet",
+    "dar.husnummer",
+    "dagi.kommuneinddeling"
+   ],
+   "lead": "Kommunernes registrering af ladestandere i GeoFA placeret rumligt i DAGI-kommuner og sat i forhold til antallet af gældende adresser i DAR.",
+   "sql": "WITH lade AS (\n  SELECT k.id_lokalid, sum(l.antal_ladepunkter)::INT AS ladepunkter\n  FROM dk('geofa', 't_5607_ladefacilitet') l\n  JOIN dk('dagi', 'kommuneinddeling') k ON ST_Intersects(l.the_geom, k.the_geom)\n  WHERE l.statuskode = 3\n  GROUP BY ALL\n), adr AS (\n  SELECT kommuneinddeling AS id_lokalid, count(*) AS adresser\n  FROM dk('dar', 'husnummer') WHERE status = '3' GROUP BY ALL\n)\nSELECT k.navn                                           AS kommune,\n       lade.ladepunkter,\n       adr.adresser,\n       round(1000.0 * lade.ladepunkter / adr.adresser, 1) AS pr_1000_adresser\nFROM dk('dagi', 'kommuneinddeling') k\nJOIN lade USING (id_lokalid)\nJOIN adr  USING (id_lokalid)\nORDER BY pr_1000_adresser DESC\nLIMIT 8;",
+   "rows": [
+    {
+     "kommune": "Høje-Taastrup",
+     "ladepunkter": 1606,
+     "adresser": 17701,
+     "pr_1000_adresser": 90.7
+    },
+    {
+     "kommune": "København",
+     "ladepunkter": 6700,
+     "adresser": 83959,
+     "pr_1000_adresser": 79.8
+    },
+    {
+     "kommune": "Frederiksberg",
+     "ladepunkter": 754,
+     "adresser": 9584,
+     "pr_1000_adresser": 78.7
+    },
+    {
+     "kommune": "Tårnby",
+     "ladepunkter": 622,
+     "adresser": 14413,
+     "pr_1000_adresser": 43.2
+    },
+    {
+     "kommune": "Albertslund",
+     "ladepunkter": 474,
+     "adresser": 11384,
+     "pr_1000_adresser": 41.6
+    },
+    {
+     "kommune": "Billund",
+     "ladepunkter": 658,
+     "adresser": 16411,
+     "pr_1000_adresser": 40.1
+    },
+    {
+     "kommune": "Brøndby",
+     "ladepunkter": 389,
+     "adresser": 9984,
+     "pr_1000_adresser": 39
+    },
+    {
+     "kommune": "Herlev",
+     "ladepunkter": 384,
+     "adresser": 10648,
+     "pr_1000_adresser": 36.1
+    }
+   ],
+   "seconds": 6.5,
+   "slug": "ladepunkter-adresser"
+  },
+  {
+   "title": "Hvilke lokalplaner er vedtaget siden 17. september?",
+   "datasets": [
+    "plandatadk.pdk_lokalplan_vedtaget_v"
+   ],
+   "lead": "Det samme datasæt læst på to datoer. Planer i det nyeste snapshot, som ikke fandtes i snapshottet fra 17. september, er kommet til siden. Skift datoen for at se en anden periode.",
+   "kind": "historik",
+   "sql": "SELECT ny.kommunenavn                                    AS kommune,\n       ny.plannavn                                       AS lokalplan,\n       strptime(ny.datovedt::VARCHAR, '%Y%m%d')::DATE    AS vedtaget\nFROM dk('plandatadk', 'pdk_lokalplan_vedtaget_v') ny\nANTI JOIN dk_at('plandatadk', 'pdk_lokalplan_vedtaget_v', '2026-09-17') gammel\n  USING (planid)\nORDER BY vedtaget DESC, kommune;",
+   "rows": [
+    {
+     "kommune": "Thisted",
+     "lokalplan": "Ophævelse af lokalplan 1.33 - Nordatlantens Hus, Hanstholm",
+     "vedtaget": "2026-09-23"
+    },
+    {
+     "kommune": "Mariagerfjord",
+     "lokalplan": "Døgninstitution ved Ølsvej i Hobro",
+     "vedtaget": "2026-09-18"
+    },
+    {
+     "kommune": "Glostrup",
+     "lokalplan": "Daginstitution på Mosetoften",
+     "vedtaget": "2026-09-16"
+    },
+    {
+     "kommune": "Høje-Taastrup",
+     "lokalplan": "For et område mellem Hovedgaden og Kallerupvej",
+     "vedtaget": "2026-09-16"
+    },
+    {
+     "kommune": "Aalborg",
+     "lokalplan": "Højspændingsstation - Nordjyllandsværket",
+     "vedtaget": "2026-09-15"
+    },
+    {
+     "kommune": "Allerød",
+     "lokalplan": "Vassingerød Erhvervsområde",
+     "vedtaget": "2026-09-15"
+    },
+    {
+     "kommune": "Herning",
+     "lokalplan": "Boligområde ved Engholm Søpark i Herning",
+     "vedtaget": "2026-09-15"
+    },
+    {
+     "kommune": "Esbjerg",
+     "lokalplan": "Tæt - Lav boligbebyggelse ved Andrupgård, Esbjerg Ø",
+     "vedtaget": "2026-09-14"
+    },
+    {
+     "kommune": "Greve",
+     "lokalplan": "Tillæg nr. 2 til Lokalplan nr. 12.50  for strandvejsområdet",
+     "vedtaget": "2026-09-14"
+    },
+    {
+     "kommune": "Langeland",
+     "lokalplan": "Nyt boligområde i Bagenkop",
+     "vedtaget": "2026-09-14"
+    },
+    {
+     "kommune": "Gladsaxe",
+     "lokalplan": "Stengård Skole",
+     "vedtaget": "2026-08-26"
+    },
+    {
+     "kommune": "Sønderborg",
+     "lokalplan": "Solcelleanlæg ved Lavensby, Nordborg",
+     "vedtaget": "2026-08-26"
+    },
+    {
+     "kommune": "Hvidovre",
+     "lokalplan": "Erhvervsområdet ved Gungevej, Arnold Nielsens Boulevard, Bibliotekvej og Høvedstensvej",
+     "vedtaget": "2026-08-25"
+    }
+   ],
+   "seconds": 2,
+   "slug": "nye-lokalplaner"
+  }
+ ]
+}

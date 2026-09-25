@@ -1,0 +1,83 @@
+---
+interface Props {
+  labels: string[];
+  id: string;
+}
+const { labels, id } = Astro.props;
+---
+<div class="tabs" data-tabs>
+  <div class="tablist" role="tablist">
+    {labels.map((l, i) => (
+      <button
+        type="button"
+        role="tab"
+        id={`${id}-t${i}`}
+        aria-controls={`${id}-p${i}`}
+        aria-selected={i === 0 ? 'true' : 'false'}
+        tabindex={i === 0 ? 0 : -1}
+      >
+        {l}
+      </button>
+    ))}
+  </div>
+  <slot />
+</div>
+
+<script>
+  for (const root of document.querySelectorAll<HTMLElement>('[data-tabs]')) {
+    const tabs = [...root.querySelectorAll<HTMLButtonElement>(':scope > .tablist [role=tab]')];
+    const panels = [...root.querySelectorAll<HTMLElement>(':scope > [role=tabpanel]')];
+    panels.forEach((p, i) => {
+      p.id = tabs[i].getAttribute('aria-controls')!;
+      p.setAttribute('aria-labelledby', tabs[i].id);
+      p.hidden = i !== 0;
+    });
+    const select = (i: number) => {
+      tabs.forEach((t, j) => {
+        t.setAttribute('aria-selected', String(i === j));
+        t.tabIndex = i === j ? 0 : -1;
+      });
+      panels.forEach((p, j) => (p.hidden = i !== j));
+    };
+    tabs.forEach((t, i) => {
+      t.addEventListener('click', () => select(i));
+      t.addEventListener('keydown', (e) => {
+        const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+        if (!d) return;
+        const k = (i + d + tabs.length) % tabs.length;
+        select(k);
+        tabs[k].focus();
+      });
+    });
+  }
+</script>
+
+<style>
+  .tablist {
+    display: flex;
+    gap: 0.25rem;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 1rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+  }
+  [role='tab'] {
+    font: 600 var(--t-sm) / 1 var(--font);
+    color: var(--ink-2);
+    background: none;
+    border: 0;
+    border-bottom: 2.5px solid transparent;
+    padding: 0.75rem 0.9rem;
+    margin-bottom: -1px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  [role='tab']:hover {
+    color: var(--ink);
+  }
+  [role='tab'][aria-selected='true'] {
+    color: var(--ink);
+    border-bottom-color: var(--matrikel);
+  }
+</style>

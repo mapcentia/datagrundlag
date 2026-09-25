@@ -1,0 +1,386 @@
+---
+import data from '../data/kommuner.json';
+import { fmtInt } from '../lib/catalog';
+
+interface Kommune {
+  kommunekode: string;
+  navn: string;
+  adresser: number;
+  bygninger: number;
+  median_aar: number | null;
+  adresser_v2: number;
+  ladepunkter: number;
+  ladepunkter_pr_1000: number;
+  pct_v2: number;
+  path: string;
+}
+
+const kommuner = data.kommuner as Kommune[];
+const nf1 = (n: number) => n.toLocaleString('da-DK', { maximumFractionDigits: 1 });
+
+const metrics = [
+  {
+    key: 'alder',
+    label: 'Bygningernes alder',
+    title: 'Median opførelsesår for opførte bygninger',
+    value: (k: Kommune) => (k.median_aar == null ? null : -k.median_aar), // ældre = mørkere
+    display: (k: Kommune) => (k.median_aar == null ? 'ingen bygninger i BBR' : `median ${k.median_aar}`),
+    legend: (v: number) => `${-v}`,
+    legendNote: 'Fra yngste til ældste bygningsmasse',
+    sources: ['bbr.bygning', 'dagi.kommuneinddeling'],
+  },
+  {
+    key: 'v2',
+    label: 'Forurenet jord',
+    title: 'Andel adresser på V2-kortlagt jord',
+    value: (k: Kommune) => k.pct_v2,
+    display: (k: Kommune) => `${nf1(k.pct_v2)} % af ${fmtInt(k.adresser)} adresser`,
+    legend: (v: number) => `${nf1(v)} %`,
+    legendNote: 'Andel af kommunens adresser',
+    sources: ['dar.husnummer', 'dar.adressepunkt', 'dkjord.dkjord_v2', 'dagi.kommuneinddeling'],
+  },
+  {
+    key: 'lade',
+    label: 'Ladepunkter',
+    title: 'Offentlige ladepunkter pr. 1.000 adresser',
+    value: (k: Kommune) => k.ladepunkter_pr_1000,
+    display: (k: Kommune) => `${nf1(k.ladepunkter_pr_1000)} pr. 1.000 adresser (${fmtInt(k.ladepunkter)} i alt)`,
+    legend: (v: number) => nf1(v),
+    legendNote: 'Pr. 1.000 adresser',
+    sources: ['geofa.t_5607_ladefacilitet', 'dar.husnummer', 'dagi.kommuneinddeling'],
+  },
+] as const;
+
+// Kvantilklasser (5), så kortet ikke domineres af hovedstadens ekstremer
+function classify(values: (number | null)[]) {
+  const sorted = values.filter((v): v is number => v != null).sort((a, b) => a - b);
+  const q = [0.2, 0.4, 0.6, 0.8].map((p) => sorted[Math.floor(p * (sorted.length - 1))]);
+  return {
+    breaks: q,
+    min: sorted[0],
+    max: sorted.at(-1)!,
+    cls: (v: number | null) => (v == null ? undefined : 1 + q.filter((b) => v > b).length),
+  };
+}
+
+const classed = metrics.map((m) => {
+  const c = classify(kommuner.map(m.value));
+  return { ...m, ...c };
+});
+
+// Bornholm flyttes ind i en ramme øverst til højre, som på det klassiske Danmarkskort
+function bounds(paths: string[]) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const p of paths)
+    for (const [, x, y] of p.matchAll(/(-?\d+) (-?\d+)/g)) {
+      x0 = Math.min(x0, +x); x1 = Math.max(x1, +x);
+      y0 = Math.min(y0, +y); y1 = Math.max(y1, +y);
+    }
+  return { x0, y0, x1, y1 };
+}
+const inInset = (k: Kommune) => ['0400', '0411'].includes(k.kommunekode); // Bornholm og Christiansø
+const main = bounds(kommuner.filter((k) => !inInset(k)).map((k) => k.path));
+const bh = bounds(kommuner.filter(inInset).map((k) => k.path));
+const pad = 40;
+const insetW = bh.x1 - bh.x0 + 2 * pad;
+const inset = { w: insetW, h: bh.y1 - bh.y0 + 2 * pad, x: main.x1 - insetW, y: main.y0 };
+const offset = { x: inset.x + pad - bh.x0, y: inset.y + pad - bh.y0 };
+const m = 30;
+const viewBox = `${main.x0 - m} ${main.y0 - m} ${main.x1 - main.x0 + 2 * m} ${main.y1 - main.y0 + 2 * m}`;
+---
+<figure class="kmap" data-metric="alder">
+  <div class="kmap-controls" role="radiogroup" aria-label="Vælg nøgletal">
+    {classed.map((m, i) => (
+      <button type="button" role="radio" aria-checked={i === 0 ? 'true' : 'false'} data-set={m.key}>
+        {m.label}
+      </button>
+    ))}
+  </div>
+
+  <div class="kmap-stage">
+    <svg viewBox={viewBox} role="img" aria-labelledby="kmap-title">
+      <title id="kmap-title">Danmarkskort med nøgletal pr. kommune</title>
+      <g class="kommuner">
+        {kommuner.map((k) => (
+          <path
+            d={k.path}
+            transform={inInset(k) ? `translate(${offset.x} ${offset.y})` : undefined}
+            tabindex="-1"
+            data-navn={k.navn}
+            {...Object.fromEntries(classed.map((m) => [`data-${m.key}`, m.cls(m.value(k))]))}
+            {...Object.fromEntries(classed.map((m) => [`data-${m.key}-t`, m.display(k)]))}
+          />
+        ))}
+      </g>
+      <rect class="inset" x={inset.x} y={inset.y} width={inset.w} height={inset.h} rx="12" />
+    </svg>
+    <div class="kmap-tip" hidden></div>
+  </div>
+
+  <figcaption>
+    {classed.map((m) => (
+      <div class="kmap-legend" data-for={m.key}>
+        <p class="kmap-title">{m.title}</p>
+        <ol class="ramp" aria-label={m.legendNote}>
+          {[1, 2, 3, 4, 5].map((c, i) => (
+            <li>
+              <span class={`sw c${c}`} />
+              <span class="num">
+                {i === 0 ? m.legend(m.min) : m.legend(m.breaks[i - 1])}
+              </span>
+            </li>
+          ))}
+          <li class="end"><span class="num">{m.legend(m.max)}</span></li>
+        </ol>
+        <p class="kmap-src">
+          {m.legendNote}. Beregnet med DuckDB på tværs af{' '}
+          {m.sources.map((s, i) => (
+            <>
+              <a href={`/data/${s.replace('.', '/')}/`}><code>{s}</code></a>
+              {i < m.sources.length - 2 ? ', ' : i === m.sources.length - 2 ? ' og ' : ''}
+            </>
+          ))}.
+        </p>
+      </div>
+    ))}
+  </figcaption>
+
+  <details class="kmap-table">
+    <summary>Vis tallene som tabel</summary>
+    <div class="table-scroll">
+      <table class="data">
+        <thead>
+          <tr>
+            <th>Kommune</th>
+            <th class="n">Median opførelsesår</th>
+            <th class="n">Adresser</th>
+            <th class="n">% på V2-jord</th>
+            <th class="n">Ladepunkter pr. 1.000</th>
+          </tr>
+        </thead>
+        <tbody>
+          {kommuner.filter((k) => k.adresser).sort((a, b) => a.navn.localeCompare(b.navn, 'da')).map((k) => (
+            <tr>
+              <td>{k.navn}</td>
+              <td class="n">{k.median_aar ?? '–'}</td>
+              <td class="n">{fmtInt(k.adresser)}</td>
+              <td class="n">{nf1(k.pct_v2)}</td>
+              <td class="n">{nf1(k.ladepunkter_pr_1000)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </details>
+</figure>
+
+<script>
+  for (const fig of document.querySelectorAll<HTMLElement>('.kmap')) {
+    const buttons = fig.querySelectorAll<HTMLButtonElement>('[data-set]');
+    const tip = fig.querySelector<HTMLElement>('.kmap-tip')!;
+    const stage = fig.querySelector<HTMLElement>('.kmap-stage')!;
+
+    const select = (key: string) => {
+      fig.dataset.metric = key;
+      buttons.forEach((b) => b.setAttribute('aria-checked', String(b.dataset.set === key)));
+    };
+    buttons.forEach((b) => b.addEventListener('click', () => select(b.dataset.set!)));
+    fig.querySelector('[role=radiogroup]')!.addEventListener('keydown', (e) => {
+      const ev = e as KeyboardEvent;
+      if (!['ArrowRight', 'ArrowLeft'].includes(ev.key)) return;
+      const list = [...buttons];
+      const i = list.findIndex((b) => b.getAttribute('aria-checked') === 'true');
+      const next = list[(i + (ev.key === 'ArrowRight' ? 1 : list.length - 1)) % list.length];
+      select(next.dataset.set!);
+      next.focus();
+    });
+
+    const show = (p: SVGPathElement, x: number, y: number) => {
+      const key = fig.dataset.metric!;
+      tip.innerHTML = `<strong>${p.dataset.navn}</strong><span>${p.getAttribute(`data-${key}-t`)}</span>`;
+      tip.hidden = false;
+      const r = stage.getBoundingClientRect();
+      const left = Math.min(Math.max(x - r.left, 90), r.width - 90);
+      tip.style.left = `${left}px`;
+      tip.style.top = `${y - r.top}px`;
+    };
+    stage.addEventListener('pointermove', (e) => {
+      const p = (e.target as Element).closest('path');
+      if (p) show(p as SVGPathElement, e.clientX, e.clientY);
+      else tip.hidden = true;
+    });
+    stage.addEventListener('pointerleave', () => (tip.hidden = true));
+  }
+</script>
+
+<style>
+  .kmap {
+    margin: 0;
+    min-width: 0;
+  }
+  .kmap-controls {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    padding: 3px;
+    border-radius: 8px;
+    background: var(--line-2);
+    margin-bottom: 0.75rem;
+  }
+  .kmap-controls button {
+    font: 600 var(--t-sm) / 1 var(--font);
+    color: var(--ink-2);
+    background: transparent;
+    border: 0;
+    border-radius: 6px;
+    padding: 0.55rem 0.8rem;
+    cursor: pointer;
+  }
+  .kmap-controls button[aria-checked='true'] {
+    background: var(--sheet);
+    color: var(--ink);
+    box-shadow: 0 0 0 1px var(--line);
+  }
+  .kmap-stage {
+    position: relative;
+  }
+  svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+  path {
+    fill: var(--land);
+    stroke: var(--fog);
+    stroke-width: 6;
+    stroke-linejoin: round;
+    transition: fill 0.35s ease;
+  }
+  path:hover {
+    stroke: var(--ink);
+    stroke-width: 10;
+    paint-order: stroke;
+  }
+  .inset {
+    fill: none;
+    stroke: var(--line);
+    stroke-width: 5;
+  }
+  .kmap[data-metric='alder'] path[data-alder='1'],
+  .kmap[data-metric='v2'] path[data-v2='1'],
+  .kmap[data-metric='lade'] path[data-lade='1'] {
+    fill: var(--seq-1);
+  }
+  .kmap[data-metric='alder'] path[data-alder='2'],
+  .kmap[data-metric='v2'] path[data-v2='2'],
+  .kmap[data-metric='lade'] path[data-lade='2'] {
+    fill: var(--seq-2);
+  }
+  .kmap[data-metric='alder'] path[data-alder='3'],
+  .kmap[data-metric='v2'] path[data-v2='3'],
+  .kmap[data-metric='lade'] path[data-lade='3'] {
+    fill: var(--seq-3);
+  }
+  .kmap[data-metric='alder'] path[data-alder='4'],
+  .kmap[data-metric='v2'] path[data-v2='4'],
+  .kmap[data-metric='lade'] path[data-lade='4'] {
+    fill: var(--seq-4);
+  }
+  .kmap[data-metric='alder'] path[data-alder='5'],
+  .kmap[data-metric='v2'] path[data-v2='5'],
+  .kmap[data-metric='lade'] path[data-lade='5'] {
+    fill: var(--seq-5);
+  }
+
+  .kmap-tip {
+    position: absolute;
+    transform: translate(-50%, calc(-100% - 14px));
+    background: var(--ink);
+    color: var(--fog);
+    padding: 0.45rem 0.7rem;
+    border-radius: 6px;
+    font-size: var(--t-xs);
+    line-height: 1.35;
+    pointer-events: none;
+    white-space: nowrap;
+    display: grid;
+  }
+  .kmap-tip[hidden] {
+    display: none;
+  }
+
+  .kmap-legend {
+    display: none;
+    font-size: var(--t-sm);
+  }
+  .kmap[data-metric='alder'] [data-for='alder'],
+  .kmap[data-metric='v2'] [data-for='v2'],
+  .kmap[data-metric='lade'] [data-for='lade'] {
+    display: block;
+  }
+  .kmap-title {
+    font-weight: 650;
+    margin: 0.75rem 0 0.4rem;
+  }
+  .ramp {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 0.6rem;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 3.6rem)) auto;
+    font-size: var(--t-xs);
+    color: var(--ink-2);
+  }
+  .ramp li {
+    display: grid;
+    gap: 3px;
+  }
+  .ramp .sw {
+    height: 10px;
+    margin-right: 2px;
+  }
+  .ramp li:first-child .sw {
+    border-radius: 3px 0 0 3px;
+  }
+  .ramp li:nth-child(5) .sw {
+    border-radius: 0 3px 3px 0;
+  }
+  .ramp .end {
+    padding-top: 13px;
+    margin-left: -0.6rem;
+  }
+  .ramp li .num {
+    transform: translateX(-0.4em);
+  }
+  .ramp li:first-child .num {
+    transform: none;
+  }
+  .c1 { background: var(--seq-1); }
+  .c2 { background: var(--seq-2); }
+  .c3 { background: var(--seq-3); }
+  .c4 { background: var(--seq-4); }
+  .c5 { background: var(--seq-5); }
+  .kmap-src {
+    color: var(--ink-2);
+    font-size: var(--t-xs);
+    max-width: 60ch;
+  }
+  .kmap-src code {
+    font-size: 0.95em;
+  }
+  .kmap-table {
+    font-size: var(--t-sm);
+    margin-top: 0.25rem;
+  }
+  .kmap-table summary {
+    cursor: pointer;
+    color: var(--ink-2);
+    font-weight: 550;
+  }
+  .kmap-table .table-scroll {
+    max-height: 22rem;
+    overflow: auto;
+    margin-top: 0.75rem;
+  }
+</style>

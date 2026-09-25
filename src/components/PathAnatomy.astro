@@ -1,0 +1,77 @@
+---
+import { datasets } from '../lib/catalog';
+const d = datasets.find((x) => x.id === 'bbr.bygning')!;
+const file = d.assets.parquet!.s3.split('/').at(-1)!;
+const parts = [
+  { text: 's3://gc2-parquet/', note: 'Offentlig bucket i eu-west-1. Ingen login eller nøgler.' },
+  { text: 'centia-io/dk/', note: 'Databasen. Her ligger catalog.json, roden i STAC-kataloget.' },
+  { text: `schema=${d.schema}/`, note: 'Kilden, fx BBR, DAR eller Matriklen.' },
+  { text: `relation=${d.relation}/`, note: 'Datasættet. collection.json og latest.json peger på nyeste snapshot.' },
+  { text: `_gc2_snapshot_date=${d.latest}/`, note: 'Et snapshot pr. dato. Gamle snapshots bliver liggende, og DuckDB læser datoen som en kolonne.' },
+  { text: file, note: 'GeoParquet 1.1 med bbox-kolonne. Ved siden af ligger .fgb og metadata.' },
+];
+---
+<figure class="anatomy">
+  <p class="path" aria-hidden="true">
+    {parts.map((p, i) => <span class={`seg s${i}`}>{p.text}</span>)}
+  </p>
+  <ol class="notes">
+    {parts.map((p, i) => (
+      <li class={`s${i}`}>
+        <code>{p.text.replace(/\/$/, '')}</code>
+        <span>{p.note}</span>
+      </li>
+    ))}
+  </ol>
+</figure>
+
+<style>
+  .anatomy {
+    margin: 0;
+  }
+  .path {
+    font-family: var(--mono);
+    font-size: clamp(0.72rem, 1.45vw, 1.02rem);
+    line-height: 2.2;
+    overflow-wrap: anywhere;
+    margin: 0 0 1.75rem;
+    padding: 1.25rem 1.5rem;
+    background: var(--code-bg);
+    color: var(--code-ink);
+    border-radius: var(--radius);
+  }
+  .seg {
+    padding-bottom: 4px;
+    border-bottom: 3px solid var(--k);
+  }
+  .s0 { --k: #7f8ea3; }
+  .s1 { --k: #9ec5f4; }
+  .s2 { --k: #ff8a7a; }
+  .s3 { --k: #f3c26b; }
+  .s4 { --k: #9fd6ae; }
+  .s5 { --k: #c9b8f5; }
+  .notes {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    gap: 1.25rem 2rem;
+    font-size: var(--t-sm);
+  }
+  .notes li {
+    display: grid;
+    gap: 0.3rem;
+    padding-left: 0.85rem;
+    border-left: 3px solid var(--k);
+    align-content: start;
+  }
+  .notes code {
+    font-size: 0.85em;
+    justify-self: start;
+    overflow-wrap: anywhere;
+  }
+  .notes span {
+    color: var(--ink-2);
+  }
+</style>

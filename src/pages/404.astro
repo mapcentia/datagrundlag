@@ -1,0 +1,14 @@
+---
+import Base from '../layouts/Base.astro';
+---
+<Base title="Siden findes ikke">
+  <div class="wrap page">
+    <h1>Siden findes ikke</h1>
+    <p>Adressen peger ikke på noget her. Datasæt kan være omdøbt, men de ligger stadig i kataloget.</p>
+    <p><a class="btn" href="/data/">Søg i datasættene</a></p>
+  </div>
+</Base>
+<style>
+  .page { padding-top: 5rem; max-width: 60ch; }
+  h1 { font-size: var(--t-2xl); }
+</style>

@@ -1,0 +1,325 @@
+@import '@fontsource-variable/schibsted-grotesk';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+
+:root {
+  color-scheme: light dark;
+
+  /* Kortbladets farver */
+  --fog: #eef2ef;
+  --sheet: #f8faf8;
+  --ink: #12233f;
+  --ink-2: #445268;
+  --ink-3: #6b7789;
+  --line: #cdd6d2;
+  --line-2: #dfe5e2;
+  --matrikel: #d7261e;
+  --sea: #2458c6;
+  --code-bg: #12233f;
+  --code-ink: #e3e9ee;
+
+  /* Domæner (valideret kategorisk palet, fast rækkefølge) */
+  --d-ejendom: #c8321f;
+  --d-natur: #2e7d4f;
+  --d-kyst: #2458c6;
+  --d-kort: #b07a12;
+
+  /* Sekventiel rampe til kortet: lys = lidt, mørk = meget */
+  --seq-1: #cde2fb;
+  --seq-2: #86b6ef;
+  --seq-3: #3987e5;
+  --seq-4: #1c5cab;
+  --seq-5: #0d366b;
+  --land: #dfe6e2;
+
+  --font: 'Schibsted Grotesk Variable', 'Helvetica Neue', Arial, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+
+  /* Typeskala (1,25) */
+  --t-xs: 0.8rem;
+  --t-sm: 0.9rem;
+  --t-md: 1.0625rem;
+  --t-lg: 1.33rem;
+  --t-xl: 1.66rem;
+  --t-2xl: 2.3rem;
+  --t-3xl: clamp(2.4rem, 5.4vw, 4.4rem);
+
+  --gutter: clamp(16px, 4vw, 48px);
+  --maxw: 1240px;
+  --radius: 6px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --fog: #0f1b2d;
+    --sheet: #15233a;
+    --ink: #e6ecea;
+    --ink-2: #b3bfcc;
+    --ink-3: #8795a6;
+    --line: #2a3a54;
+    --line-2: #1f2e46;
+    --matrikel: #f0564b;
+    --sea: #7fa6f5;
+    --code-bg: #0a1424;
+    --code-ink: #e3e9ee;
+    --d-ejendom: #d0463a;
+    --d-natur: #3daa78;
+    --d-kyst: #6390f0;
+    --d-kort: #b8841c;
+    --seq-1: #1a3358;
+    --seq-2: #184f95;
+    --seq-3: #2a78d6;
+    --seq-4: #6da7ec;
+    --seq-5: #cde2fb;
+    --land: #1f2e46;
+  }
+}
+:root[data-theme='dark'] {
+  --fog: #0f1b2d;
+  --sheet: #15233a;
+  --ink: #e6ecea;
+  --ink-2: #b3bfcc;
+  --ink-3: #8795a6;
+  --line: #2a3a54;
+  --line-2: #1f2e46;
+  --matrikel: #f0564b;
+  --sea: #7fa6f5;
+  --code-bg: #0a1424;
+  --code-ink: #e3e9ee;
+  --d-ejendom: #d0463a;
+  --d-natur: #3daa78;
+  --d-kyst: #6390f0;
+  --d-kort: #b8841c;
+  --seq-1: #1a3358;
+  --seq-2: #184f95;
+  --seq-3: #2a78d6;
+  --seq-4: #6da7ec;
+  --seq-5: #cde2fb;
+  --land: #1f2e46;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-padding-top: 5rem;
+}
+
+body {
+  margin: 0;
+  background: var(--fog);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: var(--t-md);
+  line-height: 1.55;
+  font-feature-settings: 'ss01', 'tnum' 0;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  line-height: 1.12;
+  letter-spacing: -0.015em;
+  margin: 0 0 0.5em;
+  font-weight: 700;
+  text-wrap: balance;
+}
+h1 {
+  font-size: var(--t-3xl);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 0.98;
+}
+h2 {
+  font-size: var(--t-2xl);
+  letter-spacing: -0.025em;
+}
+h3 {
+  font-size: var(--t-lg);
+}
+p {
+  margin: 0 0 1em;
+  text-wrap: pretty;
+}
+
+a {
+  color: inherit;
+  text-decoration-color: color-mix(in srgb, var(--matrikel) 70%, transparent);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 0.18em;
+}
+a:hover {
+  text-decoration-color: var(--matrikel);
+}
+
+:focus-visible {
+  outline: 2.5px solid var(--sea);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+code,
+kbd,
+pre {
+  font-family: var(--mono);
+  font-size: 0.88em;
+}
+:not(pre) > code {
+  background: var(--line-2);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  overflow-wrap: anywhere;
+}
+
+pre {
+  margin: 0;
+  background: var(--code-bg) !important;
+  color: var(--code-ink);
+  padding: 1.1rem 1.25rem;
+  border-radius: var(--radius);
+  overflow-x: auto;
+  line-height: 1.6;
+  font-size: 0.84rem;
+  tab-size: 2;
+}
+
+/* Shiki css-variables-tema */
+:root {
+  --astro-code-foreground: #e3e9ee;
+  --astro-code-background: transparent;
+  --astro-code-token-keyword: #ff8a7a;
+  --astro-code-token-string: #9fd6ae;
+  --astro-code-token-comment: #7f8ea3;
+  --astro-code-token-constant: #f3c26b;
+  --astro-code-token-function: #9ec5f4;
+  --astro-code-token-parameter: #e3e9ee;
+  --astro-code-token-punctuation: #aab6c4;
+  --astro-code-token-string-expression: #9fd6ae;
+  --astro-code-token-link: #9ec5f4;
+}
+
+.wrap {
+  width: 100%;
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+.muted {
+  color: var(--ink-2);
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Knapper */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font: inherit;
+  font-weight: 600;
+  font-size: var(--t-sm);
+  padding: 0.7rem 1.1rem;
+  border-radius: var(--radius);
+  border: 1.5px solid var(--ink);
+  background: var(--ink);
+  color: var(--fog);
+  text-decoration: none;
+  cursor: pointer;
+  line-height: 1.1;
+}
+.btn:hover {
+  background: color-mix(in srgb, var(--ink) 86%, var(--sea));
+}
+.btn.ghost {
+  background: transparent;
+  color: var(--ink);
+}
+.btn.ghost:hover {
+  background: var(--sheet);
+}
+
+/* Domæne-prik, som i en kortsignatur */
+.swatch {
+  display: inline-block;
+  width: 0.7em;
+  height: 0.7em;
+  border-radius: 2px;
+  flex: none;
+  background: var(--c, var(--ink-3));
+}
+[data-domain='ejendom'] {
+  --c: var(--d-ejendom);
+}
+[data-domain='natur'] {
+  --c: var(--d-natur);
+}
+[data-domain='kyst'] {
+  --c: var(--d-kyst);
+}
+[data-domain='kort'] {
+  --c: var(--d-kort);
+}
+
+/* Tabeller */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+table.data {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: var(--t-sm);
+}
+table.data th,
+table.data td {
+  text-align: left;
+  padding: 0.5rem 0.75rem 0.5rem 0;
+  border-bottom: 1px solid var(--line-2);
+  vertical-align: top;
+}
+table.data th {
+  font-weight: 600;
+  color: var(--ink-2);
+  border-bottom-color: var(--line);
+  white-space: nowrap;
+}
+table.data .n + td:not(.n),
+table.data .n + th:not(.n) {
+  padding-left: 1.5rem;
+}
+table.data td.n,
+table.data th.n {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  padding-right: 0;
+  padding-left: 0.75rem;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

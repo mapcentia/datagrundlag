@@ -1,0 +1,107 @@
+---
+import Base from '../layouts/Base.astro';
+import { bySchema, domains, fmtInt, fmtBytes } from '../lib/catalog';
+const groups = bySchema().sort((a, b) => a.source.name.localeCompare(b.source.name, 'da'));
+---
+<Base title="Om" description="Hvordan datagrundlag.dk høster danske grunddata, hvilke kilder der indgår, og hvilke vilkår der gælder.">
+  <div class="wrap page">
+    <article class="prose">
+      <h1>Om datagrundlag.dk</h1>
+      <p class="lead">
+        Offentlige danske data er gratis, men ofte besværlige at bruge samlet. Hvert register har sin egen tjeneste,
+        sit eget API og sine egne begrænsninger. datagrundlag.dk henter data hjem og lægger dem et sted, hvor de kan
+        analyseres sammen.
+      </p>
+
+      <h2>Sådan virker det</h2>
+      <p>
+        Data høstes løbende til <a href="https://centia.io">Centia</a>-databasen <code>dk</code>, der er en PostGIS-database
+        med én schema pr. kilde. Herfra laver Centia snapshots af hvert datasæt. Et snapshot er en fastfrosset kopi,
+        der skrives til S3 som GeoParquet 1.1 og, når datasættet har geometri, som FlatGeobuf. Hvert snapshot beskrives
+        med STAC-metadata med udstrækning, rækketal og skema.
+      </p>
+      <p>
+        Gamle snapshots bliver liggende. Derfor kan en analyse pinnes til en bestemt dato og genskabes senere, eller du
+        kan følge et register over tid.
+      </p>
+
+      <h2>Vilkår</h2>
+      <p>
+        Data stammer fra de myndigheder, der er nævnt nedenfor, og bruges på de vilkår, den enkelte kilde har fastsat.
+        Mange af dem er frie grunddata, som alle må bruge til ethvert formål. Tjek kildens egne vilkår, før du bruger
+        data i et produkt, og angiv kilden, når du publicerer resultater.
+      </p>
+      <p>
+        datagrundlag.dk er ikke en officiel myndighedstjeneste. Høstningen kan være forsinket i forhold til kilden. Skal
+        du bruge data til sagsbehandling eller andet, hvor aktualitet er afgørende, så slå op i kilden.
+      </p>
+    </article>
+
+    <section class="sources">
+      <h2>Kilder</h2>
+      <div class="table-scroll">
+        <table class="data">
+          <thead>
+            <tr>
+              <th>Kilde</th>
+              <th>Indhold</th>
+              <th>Dataansvarlig</th>
+              <th class="n">Datasæt</th>
+              <th class="n">Rækker</th>
+              <th class="n">GeoParquet</th>
+            </tr>
+          </thead>
+          <tbody>
+            {groups.map((g) => (
+              <tr>
+                <td data-domain={g.source.domain} class="src">
+                  <span class="swatch" title={domains[g.source.domain].name} />
+                  <a href={`/data/?kilde=${g.schema}`}>{g.source.name}</a>
+                </td>
+                <td>{g.source.full}</td>
+                <td class="muted">{g.source.owner}</td>
+                <td class="n">{g.datasets.length}</td>
+                <td class="n">{fmtInt(g.rows)}</td>
+                <td class="n muted">{fmtBytes(g.bytes)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</Base>
+
+<style>
+  .page {
+    padding-top: clamp(2rem, 5vw, 3.5rem);
+  }
+  .prose {
+    max-width: 66ch;
+  }
+  h1 {
+    font-size: var(--t-2xl);
+    letter-spacing: -0.03em;
+  }
+  .prose h2 {
+    font-size: var(--t-xl);
+    margin-top: 2.5rem;
+  }
+  .lead {
+    font-size: var(--t-lg);
+    color: var(--ink-2);
+  }
+  .sources {
+    margin-top: 4rem;
+  }
+  .sources h2 {
+    font-size: var(--t-xl);
+  }
+  .src {
+    white-space: nowrap;
+    font-weight: 600;
+  }
+  .src .swatch {
+    margin-right: 0.45rem;
+  }
+</style>

@@ -1,0 +1,84 @@
+---
+import Base from '../layouts/Base.astro';
+import Example from '../components/Example.astro';
+import CodeBlock from '../components/CodeBlock.astro';
+import examplesData from '../data/examples.json';
+import { fmtDate } from '../lib/catalog';
+import init from '../../scripts/duckdb/init.sql?raw';
+
+const { examples, generated } = examplesData;
+---
+<Base title="Eksempler" description="Analyser på tværs af DAR, BBR, DAGI, Naturdatabasen, jordforurening og GeoFA med DuckDB direkte mod S3.">
+  <div class="wrap page">
+    <header class="head">
+      <h1>Analyser på tværs af registre</h1>
+      <p class="lead">
+        Hvert eksempel kombinerer datasæt fra mindst to myndigheder. Forespørgslerne blev sidst kørt{' '}
+        {fmtDate(generated.slice(0, 10))} mod de nyeste snapshots, og tabellerne viser det faktiske resultat.
+      </p>
+      <nav class="toc" aria-label="Eksempler på siden">
+        <ul>
+          {examples.map((e) => <li><a href={`#${e.slug}`}>{e.title}</a></li>)}
+        </ul>
+      </nav>
+    </header>
+
+    <section class="setup">
+      <div>
+        <h2>Før du starter</h2>
+        <p>
+          Eksemplerne bruger en lille makro, <code>dk('kilde', 'datasæt')</code>, der altid læser det nyeste snapshot.
+          Kør denne blok i DuckDB først. Du kan også gemme den som <code>~/.duckdbrc</code>, så den indlæses automatisk.
+        </p>
+      </div>
+      <CodeBlock code={init} caption="init.sql" />
+    </section>
+
+    {examples.map((ex) => <Example ex={ex} headingLevel={2} />)}
+  </div>
+</Base>
+
+<style>
+  .page {
+    padding-top: clamp(2rem, 5vw, 3.5rem);
+  }
+  .head {
+    max-width: 70ch;
+  }
+  h1 {
+    font-size: var(--t-2xl);
+    letter-spacing: -0.03em;
+  }
+  .lead {
+    color: var(--ink-2);
+  }
+  .toc ul {
+    padding-left: 1.1rem;
+    margin: 1.5rem 0 0;
+    display: grid;
+    gap: 0.3rem;
+  }
+  .setup {
+    display: grid;
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+    gap: 2rem;
+    margin: 3rem 0 1rem;
+    padding: 1.75rem;
+    background: var(--sheet);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+  }
+  .setup h2 {
+    font-size: var(--t-lg);
+  }
+  .setup p {
+    color: var(--ink-2);
+    font-size: var(--t-sm);
+  }
+  @media (max-width: 860px) {
+    .setup {
+      grid-template-columns: minmax(0, 1fr);
+      padding: 1.25rem;
+    }
+  }
+</style>

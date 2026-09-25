@@ -1,0 +1,226 @@
+---
+import '../styles/global.css';
+import Logo from '../components/Logo.astro';
+import { totals, fmtDate, catalog } from '../lib/catalog';
+const updated = new Date(catalog.generated).toLocaleString('da-DK', { dateStyle: 'long', timeStyle: 'short', timeZone: 'Europe/Copenhagen' });
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+const {
+  title,
+  description = 'Danske grunddata som åbne GeoParquet- og FlatGeobuf-filer i en offentlig S3-bucket. Analysér adresser, bygninger, matrikler, natur og planer på tværs med DuckDB, QGIS eller Python.',
+} = Astro.props;
+const fullTitle = title ? `${title} | datagrundlag.dk` : 'datagrundlag.dk – danske grunddata som filer';
+const path = Astro.url.pathname;
+const nav = [
+  { href: '/data/', label: 'Data' },
+  { href: '/eksempler/', label: 'Eksempler' },
+  { href: '/kom-i-gang/', label: 'Kom i gang' },
+  { href: '/om/', label: 'Om' },
+];
+---
+<!doctype html>
+<html lang="da">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="da_DK" />
+    {Astro.site && <link rel="canonical" href={new URL(path, Astro.site)} />}
+    <meta name="theme-color" content="#eef2ef" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0f1b2d" media="(prefers-color-scheme: dark)" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Spring til indhold</a>
+    <header class="site-header">
+      <div class="wrap bar">
+        <a class="brand" href="/" aria-label="datagrundlag.dk, forside">
+          <Logo />
+          <span>datagrundlag<span class="tld">.dk</span></span>
+        </a>
+        <nav aria-label="Hovedmenu">
+          <ul>
+            {nav.map((n) => (
+              <li>
+                <a href={n.href} aria-current={path.startsWith(n.href) ? 'page' : undefined}>{n.label}</a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </div>
+    </header>
+    <main id="main">
+      <slot />
+    </main>
+    <footer class="site-footer">
+      <div class="wrap foot">
+        <div class="foot-brand">
+          <a class="brand" href="/"><Logo size={20} /><span>datagrundlag<span class="tld">.dk</span></span></a>
+          <p class="muted">
+            Et åbent katalog over danske grunddata, høstet og drevet af{' '}
+            <a href="https://centia.io">Centia</a>. Seneste snapshot {fmtDate(totals.latest)}. Kataloget
+            blev opdateret {updated}.
+          </p>
+        </div>
+        <div>
+          <h2 class="foot-h">Adgang</h2>
+          <ul>
+            <li><code>s3://gc2-parquet/centia-io/dk/</code></li>
+            <li><a href="https://gc2-parquet.s3.amazonaws.com/centia-io/dk/catalog.json">STAC-katalog (catalog.json)</a></li>
+            <li><a href="/kom-i-gang/">Vejledning til DuckDB, QGIS og Python</a></li>
+            <li><a href="/kom-i-gang/#historik">Gå tilbage i tid</a></li>
+          </ul>
+        </div>
+        <div>
+          <h2 class="foot-h">Om data</h2>
+          <ul>
+            <li><a href="/om/">Kilder og vilkår</a></li>
+            <li><a href="/data/">Alle {totals.datasets} datasæt</a></li>
+            <li><a href="/eksempler/">Analyser på tværs</a></li>
+          </ul>
+        </div>
+      </div>
+    </footer>
+    <script>
+      document.addEventListener('click', async (e) => {
+        const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-copy]');
+        if (!btn) return;
+        try {
+          await navigator.clipboard.writeText(btn.dataset.copy ?? '');
+          const old = btn.textContent;
+          btn.textContent = 'Kopieret';
+          btn.dataset.done = '';
+          setTimeout(() => {
+            btn.textContent = old;
+            delete btn.dataset.done;
+          }, 1600);
+        } catch {
+          btn.textContent = 'Markér og kopiér manuelt';
+        }
+      });
+    </script>
+  </body>
+</html>
+
+<style>
+  .skip {
+    position: absolute;
+    left: -9999px;
+  }
+  .skip:focus {
+    left: 1rem;
+    top: 1rem;
+    z-index: 100;
+    background: var(--ink);
+    color: var(--fog);
+    padding: 0.5rem 1rem;
+  }
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: color-mix(in srgb, var(--fog) 88%, transparent);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line-2);
+  }
+  .bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    height: 3.75rem;
+  }
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 750;
+    font-size: 1.12rem;
+    letter-spacing: -0.02em;
+    text-decoration: none;
+    color: var(--ink);
+  }
+  .tld {
+    color: var(--ink-3);
+    font-weight: 500;
+  }
+  nav ul {
+    display: flex;
+    gap: clamp(0.75rem, 2.5vw, 1.75rem);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  nav a {
+    text-decoration: none;
+    font-weight: 550;
+    font-size: var(--t-sm);
+    color: var(--ink-2);
+    padding: 0.4rem 0;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+  }
+  nav a:hover {
+    color: var(--ink);
+  }
+  nav a[aria-current='page'] {
+    color: var(--ink);
+    border-bottom-color: var(--matrikel);
+  }
+  @media (max-width: 560px) {
+    .brand {
+      font-size: 1rem;
+    }
+    .brand .tld {
+      display: none;
+    }
+    nav ul {
+      gap: 0.8rem;
+    }
+    nav li:last-child {
+      display: none;
+    }
+  }
+  .site-footer {
+    margin-top: 6rem;
+    border-top: 1px solid var(--line);
+    padding: 3rem 0 4rem;
+    font-size: var(--t-sm);
+  }
+  .foot {
+    display: grid;
+    grid-template-columns: 2fr 1.3fr 1fr;
+    gap: 2.5rem;
+  }
+  .foot-brand p {
+    margin-top: 0.75rem;
+    max-width: 38ch;
+  }
+  .foot-h {
+    font-size: var(--t-sm);
+    color: var(--ink-3);
+    font-weight: 600;
+    letter-spacing: 0;
+    margin-bottom: 0.75rem;
+  }
+  .foot ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.45rem;
+  }
+  @media (max-width: 760px) {
+    .foot {
+      grid-template-columns: 1fr;
+      gap: 2rem;
+    }
+  }
+</style>

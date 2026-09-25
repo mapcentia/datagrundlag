@@ -1,0 +1,10 @@
+---
+// Skelpunktet: signaturen for et afmærket skelpunkt på matrikelkortet.
+interface Props { size?: number }
+const { size = 22 } = Astro.props;
+---
+<svg class="logo-mark" width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+  <path d="M2 12h20M12 2v20" stroke="currentColor" stroke-width="1.5" opacity=".35" />
+  <circle cx="12" cy="12" r="6.5" fill="none" stroke="var(--matrikel)" stroke-width="2.5" />
+  <circle cx="12" cy="12" r="1.8" fill="var(--matrikel)" />
+</svg>
