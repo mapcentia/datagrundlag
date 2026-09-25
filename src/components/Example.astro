@@ -53,6 +53,12 @@ const fmt = (v: unknown, col: string) =>
         <p class="live-note muted">
           Kører med DuckDB i din browser. Datasættene fylder {fmtBytes(bytes)}, men kun de kolonner og dele, som
           forespørgslen bruger, hentes.
+          {bytes > 1e9 && (
+            <>
+              {' '}Store datasæt kan tage et til to minutter i browseren. Med DuckDB på din egen maskine tog den{' '}
+              {ex.seconds.toLocaleString('da-DK')} s.
+            </>
+          )}
         </p>
         <p class="live-status" aria-live="polite"></p>
         <div class="live-out"></div>

@@ -1,5 +1,5 @@
 {
- "generated": "2026-09-25T09:14:44.161Z",
+ "generated": "2026-09-25T09:49:36.338Z",
  "examples": [
   {
    "title": "Hvilke Natura 2000-områder rummer flest rødlistede arter?",
@@ -114,7 +114,7 @@
      "procent": 3.3
     }
    ],
-   "seconds": 6.8,
+   "seconds": 5.8,
    "slug": "forurenet-jord-adresser"
   },
   {
@@ -175,7 +175,7 @@
      "før_1900": 4784
     }
    ],
-   "seconds": 2.3,
+   "seconds": 2.6,
    "slug": "bygningsalder-kommuner"
   },
   {
@@ -315,7 +315,7 @@
      "vedtaget": "2026-08-25"
     }
    ],
-   "seconds": 2.1,
+   "seconds": 1.7,
    "slug": "nye-lokalplaner"
   }
  ]

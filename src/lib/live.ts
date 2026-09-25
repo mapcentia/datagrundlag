@@ -9,8 +9,8 @@ const KEY = `dg-live:${DATA_BASE}`;
 
 export async function liveAvailable(): Promise<boolean> {
   try {
-    const cached = sessionStorage.getItem(KEY);
-    if (cached) return cached === '1';
+    // Gamle builds gemte også '0'; det ignoreres, så et forældet negativt svar ikke hænger fast
+    if (sessionStorage.getItem(KEY) === '1') return true;
   } catch {
     /* ingen sessionStorage */
   }
@@ -23,8 +23,11 @@ export async function liveAvailable(): Promise<boolean> {
   } catch {
     ok = false;
   }
+  // Kun et positivt svar gemmes. Et negativt svar tjekkes igen ved næste sidevisning, så
+  // live-funktionerne dukker op, så snart bucketens CORS tillader det.
   try {
-    sessionStorage.setItem(KEY, ok ? '1' : '0');
+    if (ok) sessionStorage.setItem(KEY, '1');
+    else sessionStorage.removeItem(KEY);
   } catch {
     /* ignorer */
   }

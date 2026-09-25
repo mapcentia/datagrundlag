@@ -20,6 +20,11 @@ async function start() {
   const db = new duckdb.AsyncDuckDB(new duckdb.VoidLogger(), worker);
   await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
   URL.revokeObjectURL(workerUrl);
+  // Brug altid range-læsninger (HTTP 206), så kun de nødvendige dele af filerne hentes.
+  // Uden dette falder DuckDB-WASM tilbage til at hente hele filer, fx 1,2 GB for bbr.bygning.
+  await db.open({
+    filesystem: { reliableHeadRequests: true, allowFullHTTPReads: false, forceFullHTTPReads: false },
+  });
   const conn = await db.connect();
   await conn.query('LOAD spatial;');
   await conn.close();

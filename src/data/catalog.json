@@ -1,5 +1,5 @@
 {
- "generated": "2026-09-25T09:23:58.462Z",
+ "generated": "2026-09-25T09:49:16.418Z",
  "httpRoot": "https://gc2-parquet.s3.amazonaws.com/centia-io/dk",
  "s3Root": "s3://gc2-parquet/centia-io/dk",
  "datasets": [
