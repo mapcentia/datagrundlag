@@ -40,6 +40,24 @@ Opsætning (én gang):
 
 Commit gerne `src/data/*.json` jævnligt. Det er dem, sitet falder tilbage på, hvis analyserne fejler.
 
+## DuckDB i browseren
+
+Eksemplerne har en "Kør i browseren"-knap, og `/sql/` er en SQL-editor. Begge bruger DuckDB-WASM
+(hentes fra jsDelivr ved første klik) og læser direkte fra bucketen.
+
+- `src/lib/live.ts` afgør ved sideindlæsning, om bucketen kan læses fra browseren. Kun da vises
+  knapperne og menupunktet SQL (`[data-live-only]`).
+- `src/lib/duck.ts` oversætter `dk()`, `dk_at()` og `dk_alle()` til konkrete fil-URL'er via
+  `latest.json`, `collection.json` og `item.json`, fordi DuckDB ikke kan liste filer over HTTP.
+
+Det kræver, at bucketen tillader `HEAD` og eksponerer `Content-Range` via CORS:
+
+```sh
+aws s3api put-bucket-cors --bucket gc2-parquet --cors-configuration file://scripts/s3-cors.json
+```
+
+Til lokal test mod en anden kilde (fx en CORS-proxy) kan `PUBLIC_DATA_BASE` sættes ved build.
+
 ## Tilføj et eksempel
 
 Læg en `.sql`-fil i `scripts/examples/` med en header:

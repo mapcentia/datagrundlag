@@ -49,7 +49,7 @@ const sign = (n: number) => (n > 0 ? `+${fmtInt(n)}` : n < 0 ? `−${fmtInt(-n)}
       return (
         <div class="row" role="row" data-domain={sourceOf(d.schema).domain}>
           <span class="name" role="rowheader">
-            {dataset ? `${n} snapshots` : <a href={datasetUrl(d)}>{shortTitle(d)}</a>}
+            {dataset ? (n === 1 ? '1 snapshot' : `${n} snapshots`) : <a href={datasetUrl(d)}>{shortTitle(d)}</a>}
             {!dataset && <span class="src">{sourceOf(d.schema).name}</span>}
           </span>
           <span class="cells">

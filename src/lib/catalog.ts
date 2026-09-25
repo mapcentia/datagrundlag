@@ -168,3 +168,13 @@ export const geomNames: Record<string, string> = {
 };
 
 export const datasetUrl = (d: Pick<Dataset, 'schema' | 'relation'>) => `/data/${d.schema}/${d.relation}/`;
+
+/**
+ * Den meningsfulde beskrivelse fra collection.json, eller null hvis feltet er tomt eller
+ * stadig indeholder Centias standardtekst ("Snapshots of schema.relation").
+ */
+export function descriptionOf(d: Dataset): string | null {
+  const text = d.description?.trim();
+  if (!text || text === `Snapshots of ${d.id}` || text === d.title) return null;
+  return text;
+}

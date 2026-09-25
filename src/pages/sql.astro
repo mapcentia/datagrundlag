@@ -1,0 +1,338 @@
+---
+import Base from '../layouts/Base.astro';
+import examplesData from '../data/examples.json';
+import { datasets, fmtDate, totals } from '../lib/catalog';
+
+const starter = `-- dk('kilde', 'datasæt') læser det nyeste snapshot af et datasæt
+SELECT navn, kommunekode, round(ST_Area(the_geom) / 1e6) AS km2
+FROM dk('dagi', 'kommuneinddeling')
+ORDER BY km2 DESC
+LIMIT 10;`;
+---
+<Base title="SQL i browseren" description="Kør DuckDB-SQL mod danske grunddata direkte i browseren. Ingen installation.">
+  <div class="wrap page">
+    <header class="head">
+      <h1>SQL i browseren</h1>
+      <p class="lead">
+        Skriv SQL mod alle {totals.datasets} datasæt og kør den med DuckDB direkte i din browser. Du behøver ikke
+        installere noget. Data hentes fra bucketen, mens forespørgslen kører, og kun de kolonner, du bruger, bliver
+        hentet.
+      </p>
+    </header>
+
+    <div class="not-live" hidden>
+      <p>
+        <strong>SQL i browseren er ikke tilgængelig lige nu.</strong> Din browser kan ikke læse bucketen direkte. Brug
+        i stedet <a href="/kom-i-gang/#duckdb">DuckDB på din egen maskine</a>. Forespørgslerne er de samme.
+      </p>
+    </div>
+
+    <div class="layout">
+      <section class="editor-col" aria-label="SQL-editor">
+        <div class="toolbar">
+          <label>
+            <span class="visually-hidden">Indsæt eksempel</span>
+            <select id="example">
+              <option value="">Indsæt et eksempel …</option>
+              {examplesData.examples.map((e) => <option value={e.slug}>{e.title}</option>)}
+            </select>
+          </label>
+        </div>
+        <label for="sql" class="visually-hidden">SQL</label>
+        <textarea id="sql" spellcheck="false" autocapitalize="off" autocomplete="off" rows="14">{starter}</textarea>
+        <div class="actions">
+          <button type="button" class="btn" id="run">Kør <kbd>Ctrl</kbd>+<kbd>Enter</kbd></button>
+          <button type="button" class="btn ghost" id="stop" hidden>Stop</button>
+          <button type="button" class="btn ghost" id="share">Kopiér link</button>
+          <span id="status" class="status" aria-live="polite"></span>
+        </div>
+        <div id="out" class="out"></div>
+      </section>
+
+      <aside class="help">
+        <h2>Datasæt</h2>
+        <p>Find et datasæt og indsæt det i editoren.</p>
+        <div class="pick">
+          <input list="ids" id="pick" placeholder="fx bbr.bygning" autocomplete="off" />
+          <button type="button" class="btn ghost" id="insert">Indsæt</button>
+        </div>
+        <datalist id="ids">
+          {datasets.map((d) => <option value={d.id}>{d.title}</option>)}
+        </datalist>
+
+        <h2>Makroer</h2>
+        <dl class="macros">
+          <dt><code>dk('kilde', 'datasæt')</code></dt>
+          <dd>Nyeste snapshot.</dd>
+          <dt><code>dk_at('kilde', 'datasæt', 'YYYY-MM-DD')</code></dt>
+          <dd>Datasættet, som det så ud på en dato. Historikken begynder {fmtDate(totals.first)}.</dd>
+          <dt><code>dk_alle('kilde', 'datasæt')</code></dt>
+          <dd>Alle snapshots med datoen i kolonnen <code>_gc2_snapshot_date</code>.</dd>
+        </dl>
+
+        <h2>Godt at vide</h2>
+        <ul>
+          <li><code>spatial</code> er indlæst, så <code>ST_</code>-funktionerne virker. Koordinater er i EPSG:25832.</li>
+          <li>Afgræns med <code>LIMIT</code>. Resultatet vises med højst 500 rækker.</li>
+          <li>Store joins kan tage et minut og hente flere hundrede MB. På din egen maskine er DuckDB hurtigere.</li>
+          <li>Geometri vises som binær. Brug <code>ST_AsText(the_geom)</code> for at se koordinaterne.</li>
+        </ul>
+      </aside>
+    </div>
+  </div>
+</Base>
+
+<script>
+  import { liveAvailable } from '../lib/live';
+  import { renderResult, renderError, ticker } from '../lib/render';
+  import examplesData from '../data/examples.json';
+
+  const sql = document.querySelector<HTMLTextAreaElement>('#sql')!;
+  const runBtn = document.querySelector<HTMLButtonElement>('#run')!;
+  const stopBtn = document.querySelector<HTMLButtonElement>('#stop')!;
+  const shareBtn = document.querySelector<HTMLButtonElement>('#share')!;
+  const status = document.querySelector<HTMLElement>('#status')!;
+  const out = document.querySelector<HTMLElement>('#out')!;
+  const example = document.querySelector<HTMLSelectElement>('#example')!;
+  const pick = document.querySelector<HTMLInputElement>('#pick')!;
+  const layout = document.querySelector<HTMLElement>('.layout')!;
+
+  // Forespørgsel fra link (#q=...)
+  const fromHash = new URLSearchParams(location.hash.slice(1)).get('q');
+  if (fromHash) sql.value = fromHash;
+
+  liveAvailable().then((ok) => {
+    if (!ok) {
+      document.querySelector<HTMLElement>('.not-live')!.hidden = false;
+      layout.classList.add('disabled');
+      runBtn.disabled = true;
+    }
+  });
+
+  let running = false;
+  let phase = '';
+  async function runQuery() {
+    if (running || runBtn.disabled) return;
+    running = true;
+    runBtn.disabled = true;
+    stopBtn.hidden = false;
+    out.innerHTML = '';
+    history.replaceState(null, '', `#q=${encodeURIComponent(sql.value)}`);
+    phase = 'Henter DuckDB …';
+    const stopTicker = ticker(status, () => phase);
+    try {
+      const duck = await import('../lib/duck');
+      stopBtn.onclick = () => duck.stop();
+      phase = 'Kører …';
+      renderResult(out, await duck.run(sql.value));
+    } catch (err) {
+      renderError(out, err);
+    } finally {
+      stopTicker();
+      status.textContent = '';
+      running = false;
+      runBtn.disabled = false;
+      stopBtn.hidden = true;
+    }
+  }
+
+  runBtn.addEventListener('click', runQuery);
+  sql.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      runQuery();
+    } else if (e.key === 'Tab' && !e.shiftKey) {
+      e.preventDefault();
+      sql.setRangeText('  ', sql.selectionStart, sql.selectionEnd, 'end');
+    }
+  });
+
+  example.addEventListener('change', () => {
+    const ex = examplesData.examples.find((x) => x.slug === example.value);
+    if (ex) sql.value = ex.sql;
+    example.value = '';
+    sql.focus();
+  });
+
+  function insertDataset() {
+    const [schema, relation] = pick.value.trim().split('.');
+    if (!schema || !relation) return;
+    sql.value = `SELECT *\nFROM dk('${schema}', '${relation}')\nLIMIT 100;`;
+    pick.value = '';
+    sql.focus();
+  }
+  document.querySelector('#insert')!.addEventListener('click', insertDataset);
+  pick.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') insertDataset();
+  });
+
+  shareBtn.addEventListener('click', async () => {
+    const url = `${location.origin}${location.pathname}#q=${encodeURIComponent(sql.value)}`;
+    history.replaceState(null, '', url);
+    try {
+      await navigator.clipboard.writeText(url);
+      shareBtn.textContent = 'Link kopieret';
+    } catch {
+      shareBtn.textContent = 'Linket står i adresselinjen';
+    }
+    setTimeout(() => (shareBtn.textContent = 'Kopiér link'), 1800);
+  });
+</script>
+
+<style>
+  .page {
+    padding-top: clamp(2rem, 5vw, 3.5rem);
+  }
+  .head {
+    max-width: 68ch;
+  }
+  h1 {
+    font-size: var(--t-2xl);
+    letter-spacing: -0.03em;
+  }
+  .lead {
+    color: var(--ink-2);
+  }
+  .not-live {
+    border: 1.5px solid var(--matrikel);
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
+    margin: 1.5rem 0;
+    max-width: 68ch;
+  }
+  .not-live p {
+    margin: 0;
+  }
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 19rem;
+    gap: 2.5rem;
+    margin-top: 2rem;
+    align-items: start;
+  }
+  .layout.disabled .editor-col {
+    opacity: 0.55;
+  }
+  .toolbar {
+    margin-bottom: 0.6rem;
+  }
+  select,
+  .pick input {
+    font: inherit;
+    font-size: var(--t-sm);
+    padding: 0.5rem 0.6rem;
+    border: 1.5px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--sheet);
+    color: var(--ink);
+    max-width: 100%;
+  }
+  textarea {
+    display: block;
+    width: 100%;
+    min-height: 16rem;
+    resize: vertical;
+    font-family: var(--mono);
+    font-size: 0.88rem;
+    line-height: 1.6;
+    tab-size: 2;
+    padding: 1rem 1.15rem;
+    background: var(--code-bg);
+    color: var(--code-ink);
+    border: 0;
+    border-radius: var(--radius);
+    caret-color: #ff8a7a;
+  }
+  textarea:focus-visible {
+    outline: 2.5px solid var(--sea);
+    outline-offset: 2px;
+  }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+    margin-top: 0.75rem;
+  }
+  kbd {
+    font-family: var(--font);
+    font-size: 0.72rem;
+    font-weight: 500;
+    opacity: 0.75;
+    margin: 0 0.1rem;
+  }
+  kbd:first-child {
+    margin-left: 0.3rem;
+  }
+  .status {
+    font-size: var(--t-sm);
+    color: var(--ink-2);
+    font-variant-numeric: tabular-nums;
+  }
+  .out :global(.live-meta) {
+    font-size: var(--t-sm);
+    font-weight: 600;
+    color: var(--ink-2);
+    margin: 1.5rem 0 0.5rem;
+  }
+  .out :global(.live-error) {
+    font-size: var(--t-sm);
+    color: var(--matrikel);
+    margin-top: 1.5rem;
+    overflow-wrap: anywhere;
+  }
+  .out :global(.table-scroll) {
+    max-height: 32rem;
+    overflow: auto;
+  }
+  .help {
+    font-size: var(--t-sm);
+  }
+  .help h2 {
+    font-size: var(--t-md);
+    margin: 1.75rem 0 0.4rem;
+  }
+  .help h2:first-child {
+    margin-top: 0;
+  }
+  .help p {
+    color: var(--ink-2);
+    margin-bottom: 0.5rem;
+  }
+  .pick {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .pick input {
+    flex: 1;
+    min-width: 0;
+  }
+  .pick .btn {
+    padding: 0.5rem 0.8rem;
+  }
+  .macros {
+    margin: 0;
+  }
+  .macros dt {
+    margin-top: 0.6rem;
+  }
+  .macros dt code {
+    font-size: 0.78rem;
+  }
+  .macros dd {
+    margin: 0.2rem 0 0;
+    color: var(--ink-2);
+  }
+  .help ul {
+    padding-left: 1.1rem;
+    margin: 0;
+    display: grid;
+    gap: 0.45rem;
+    color: var(--ink-2);
+  }
+  @media (max-width: 900px) {
+    .layout {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+</style>

@@ -104,6 +104,11 @@
   box-sizing: border-box;
 }
 
+/* hidden skal vinde over komponenters display-regler, fx .btn */
+[hidden] {
+  display: none !important;
+}
+
 html {
   -webkit-text-size-adjust: 100%;
   scroll-padding-top: 5rem;
@@ -322,4 +327,12 @@ table.data th.n {
     animation: none !important;
     transition: none !important;
   }
+}
+
+/* Live-funktioner vises først, når browseren kan læse bucketen */
+[data-live-only] {
+  display: none !important;
+}
+:root[data-live='yes'] [data-live-only] {
+  display: revert !important;
 }

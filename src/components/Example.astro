@@ -1,7 +1,7 @@
 ---
 import CodeBlock from './CodeBlock.astro';
 import DatasetTag from './DatasetTag.astro';
-import { fmtInt } from '../lib/catalog';
+import { fmtInt, fmtBytes, datasets } from '../lib/catalog';
 
 interface Props {
   ex: {
@@ -19,6 +19,8 @@ interface Props {
 const { ex, headingLevel = 3 } = Astro.props;
 const H = `h${headingLevel}` as 'h2' | 'h3';
 const cols = ex.rows.length ? Object.keys(ex.rows[0]) : [];
+// Samlet størrelse af de datasæt, forespørgslen rører (øvre grænse for, hvad browseren henter)
+const bytes = ex.datasets.reduce((s, id) => s + (datasets.find((d) => d.id === id)?.assets.parquet?.size ?? 0), 0);
 const isNum = (v: unknown) => typeof v === 'number';
 // Årstal skal ikke have tusindtalsseparator
 const fmt = (v: unknown, col: string) =>
@@ -42,10 +44,23 @@ const fmt = (v: unknown, col: string) =>
   <div class="ex-body">
     <CodeBlock code={ex.sql} caption="DuckDB-forespørgsel" />
     <div class="ex-result">
-      <p class="ex-result-h">
+      <div class="live" data-live-only data-live-run={ex.sql}>
+        <div class="live-actions">
+          <button type="button" class="btn live-run">Kør i browseren</button>
+          <button type="button" class="btn ghost live-stop" hidden>Stop</button>
+          <a class="live-edit" href={`/sql/#q=${encodeURIComponent(ex.sql)}`}>Redigér i SQL-editoren</a>
+        </div>
+        <p class="live-note muted">
+          Kører med DuckDB i din browser. Datasættene fylder {fmtBytes(bytes)}, men kun de kolonner og dele, som
+          forespørgslen bruger, hentes.
+        </p>
+        <p class="live-status" aria-live="polite"></p>
+        <div class="live-out"></div>
+      </div>
+      <p class="ex-result-h static-h">
         Resultat <span class="muted">({ex.seconds.toLocaleString('da-DK')} s direkte fra S3 på en bærbar)</span>
       </p>
-      <div class="table-scroll">
+      <div class="table-scroll static-table">
         <table class="data">
           <thead>
             <tr>{cols.map((c) => <th class={isNum(ex.rows[0][c]) ? 'n' : ''}>{c.replaceAll('_', ' ')}</th>)}</tr>
@@ -60,6 +75,45 @@ const fmt = (v: unknown, col: string) =>
     </div>
   </div>
 </article>
+
+<script>
+  import { renderResult, renderError, ticker } from '../lib/render';
+
+  for (const box of document.querySelectorAll<HTMLElement>('[data-live-run]')) {
+    const runBtn = box.querySelector<HTMLButtonElement>('.live-run')!;
+    const stopBtn = box.querySelector<HTMLButtonElement>('.live-stop')!;
+    const status = box.querySelector<HTMLElement>('.live-status')!;
+    const out = box.querySelector<HTMLElement>('.live-out')!;
+    const result = box.closest('.ex-result')!;
+    let phase = 'Henter DuckDB …';
+
+    runBtn.addEventListener('click', async () => {
+      runBtn.disabled = true;
+      stopBtn.hidden = false;
+      out.innerHTML = '';
+      const stopTicker = ticker(status, () => phase);
+      try {
+        const duck = await import('../lib/duck');
+        stopBtn.onclick = () => duck.stop();
+        phase = 'Kører forespørgslen …';
+        const r = await duck.run(box.dataset.liveRun!);
+        stopTicker();
+        status.textContent = '';
+        renderResult(out, r);
+        result.classList.add('has-live');
+      } catch (err) {
+        stopTicker();
+        status.textContent = '';
+        renderError(out, err);
+      } finally {
+        runBtn.disabled = false;
+        runBtn.textContent = 'Kør igen';
+        stopBtn.hidden = true;
+        phase = 'Kører forespørgslen …';
+      }
+    });
+  }
+</script>
 
 <style>
   .example {
@@ -109,6 +163,52 @@ const fmt = (v: unknown, col: string) =>
   }
   .ex-result td:first-child {
     max-width: 22ch;
+  }
+  .live {
+    margin-bottom: 1.25rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .live-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem 1rem;
+  }
+  .live-edit {
+    font-size: var(--t-sm);
+    font-weight: 550;
+  }
+  .live-note {
+    font-size: var(--t-xs);
+    margin: 0.6rem 0 0;
+    max-width: 52ch;
+  }
+  .live-status {
+    font-size: var(--t-sm);
+    font-variant-numeric: tabular-nums;
+    margin: 0.75rem 0 0;
+    color: var(--ink-2);
+  }
+  .live-status:empty {
+    display: none;
+  }
+  .live-out :global(.live-meta) {
+    font-size: var(--t-sm);
+    font-weight: 600;
+    color: var(--ink-2);
+    margin: 1rem 0 0.5rem;
+  }
+  .live-out :global(.live-error) {
+    font-size: var(--t-sm);
+    color: var(--matrikel);
+    margin-top: 1rem;
+    overflow-wrap: anywhere;
+  }
+  /* Når der er et live-resultat, skjules det statiske */
+  .has-live .static-h,
+  .has-live .static-table {
+    display: none;
   }
   @media (max-width: 900px) {
     .ex-body {
