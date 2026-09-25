@@ -73,6 +73,7 @@ export const sources: Record<string, Source> = {
   plandatadk: { name: 'Plandata.dk', full: 'Lokalplaner, kommuneplanrammer og zoner', owner: 'Plan- og Landdistriktsstyrelsen', domain: 'kort' },
   geofa: { name: 'GeoFA', full: 'Kommunale fagdata', owner: 'Kommunerne (FKG)', domain: 'kort' },
   kulturarvsstyrelsen: { name: 'Kulturarv', full: 'Fredede bygninger og fortidsminder', owner: 'Slots- og Kulturstyrelsen', domain: 'kort' },
+  stednavne: { name: 'Stednavne', full: 'Danske Stednavne', owner: 'Klimadatastyrelsen', domain: 'ejendom' },
 };
 
 export const catalog = raw as unknown as {
@@ -84,8 +85,11 @@ export const catalog = raw as unknown as {
 
 export const datasets = catalog.datasets;
 
+// Kilder, der endnu ikke er beskrevet ovenfor, vises med et pænt navn ud fra schemaet
 export function sourceOf(schema: string): Source {
-  return sources[schema] ?? { name: schema, full: schema, owner: '', domain: 'kort' };
+  if (sources[schema]) return sources[schema];
+  const name = schema.charAt(0).toUpperCase() + schema.slice(1);
+  return { name, full: name, owner: '', domain: 'kort' };
 }
 
 /** Titler som "DAR – Adresser" → "Adresser", når kilden allerede står ved siden af. */

@@ -142,7 +142,7 @@ ANTI JOIN dk(${rel}) USING (${keyCol});`
 const typeName = (t: string) =>
   t.startsWith('geometry') ? t.replace('geometry', 'geometry ') : t.replace('character varying', 'tekst').replace('timestamp with time zone', 'tidsstempel');
 ---
-<Base title={d.title} description={desc ? plainText(desc) : `${d.title}: ${fmtInt(d.rows)} rækker som GeoParquet${fgb ? ' og FlatGeobuf' : ''}. Kilde: ${src.full} (${src.owner}).`}>
+<Base title={d.title} description={desc ? plainText(desc) : `${d.title}: ${fmtInt(d.rows)} rækker som GeoParquet${fgb ? ' og FlatGeobuf' : ''}. Kilde: ${src.full}${src.owner ? ` (${src.owner})` : ''}.`}>
   <div class="wrap page">
     <nav class="crumbs" aria-label="Brødkrummer">
       <a href="/data/">Data</a>
@@ -154,7 +154,7 @@ const typeName = (t: string) =>
       <div>
         <p class="source" data-domain={src.domain}>
           <span class="swatch" />
-          {src.full}, {src.owner}
+          {src.owner ? `${src.full}, ${src.owner}` : src.full}
         </p>
         <h1>{shortTitle(d)}</h1>
         <code class="dsid">{d.id}</code>
