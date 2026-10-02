@@ -8,23 +8,14 @@ import SourceChart from '../components/SourceChart.astro';
 import PathAnatomy from '../components/PathAnatomy.astro';
 import HistoryStrip from '../components/HistoryStrip.astro';
 import examplesData from '../data/examples.json';
-import { totals, fmtCompact, fmtBytes, fmtDate, fmtInt, changedCount } from '../lib/catalog';
+import { totals, fmtCompact, fmtBytes, fmtDate, fmtInt, changedCount, recentlyChanged } from '../lib/catalog';
 
 const examples = examplesData.examples;
 const featured = examples.filter((e) => ['roedlistearter-natura2000', 'forurenet-jord-adresser'].includes(e.slug));
 const timeTravel = examples.find((e) => e.kind === 'historik');
 
-// Et udsnit af datasæt, der har ændret sig, på tværs af kilder
-const historyIds = [
-  'plandatadk.pdk_lokalplan_vedtaget_v',
-  'danmarksarealinformation.bes_naturtyper',
-  'cvr.virksomhed',
-  'naturdatabasen.art_invasivearter',
-  'dkjord.dkjord_v2',
-  'geofa.t_5607_ladefacilitet',
-  'kulturarvsstyrelsen.fortidsminder_punkt_ikkefredet',
-  'plandatadk.pdk_kommuneplantillaeg_forslag_v',
-];
+// Datasæt, der har ændret sig den seneste uge, ét pr. kilde
+const recent = recentlyChanged(8);
 
 const quickstart = `-- I DuckDB (duckdb.org). Ingen nøgler, ingen konto.
 INSTALL spatial; LOAD spatial;
@@ -108,8 +99,11 @@ LIMIT 5;`;
         I DuckDB er snapshot-datoen en almindelig kolonne. Med makroen <code>dk_at()</code> læser du et datasæt, som
         det så ud på en given dato.
       </p>
+      <p>
+        Oversigten viser den seneste uge for et udvalg af datasæt, der har ændret sig, ét fra hver kilde.
+      </p>
     </div>
-    <HistoryStrip ids={historyIds} />
+    <HistoryStrip list={recent} />
   </section>
 
   {timeTravel && (

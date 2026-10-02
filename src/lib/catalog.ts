@@ -182,3 +182,69 @@ export function descriptionOf(d: Dataset): string | null {
   if (!text || text === `Snapshots of ${d.id}` || text === d.title) return null;
   return text;
 }
+
+// --- Historik for den seneste uge ---------------------------------------------------------
+
+/** Antal dage i historik-strimlen: seneste snapshot-dato og en uge tilbage. */
+export const WINDOW_DAYS = 8;
+
+/** Datoerne i vinduet, ældste først, der slutter ved det seneste snapshot i bucketen. */
+export const windowDays: string[] = (() => {
+  const end = new Date(`${totals.latest}T12:00:00Z`).getTime();
+  return Array.from({ length: WINDOW_DAYS }, (_, i) =>
+    new Date(end - (WINDOW_DAYS - 1 - i) * 864e5).toISOString().slice(0, 10),
+  );
+})();
+
+export type HistoryCell =
+  | { day: string; kind: 'none' }
+  | { day: string; kind: 'first' | 'same' | 'change'; rows: number | null; delta: number };
+
+/**
+ * Snapshots i vinduet. Det første snapshot i vinduet sammenlignes med det seneste
+ * snapshot før vinduet, så en ændring på vinduets første dag også bliver markeret.
+ */
+export function windowHistory(d: Dataset) {
+  const hs = [...d.history].sort((a, b) => a.date.localeCompare(b.date));
+  const before = hs.filter((h) => h.date < windowDays[0]).at(-1);
+  const byDate = new Map(hs.map((h) => [h.date, h.rows]));
+  let prev: number | null = before?.rows ?? null;
+  let changes = 0;
+  let maxJump = 0;
+  const cells: HistoryCell[] = windowDays.map((day) => {
+    if (!byDate.has(day)) return { day, kind: 'none' };
+    const rows = byDate.get(day) ?? null;
+    const delta = prev != null && rows != null ? rows - prev : 0;
+    const kind = prev == null ? 'first' : delta !== 0 ? 'change' : 'same';
+    if (kind === 'change') {
+      changes++;
+      maxJump = Math.max(maxJump, Math.abs(delta) / Math.max(prev ?? 1, 1));
+    }
+    prev = rows;
+    return { day, kind, rows, delta };
+  });
+  const inWindow = hs.filter((h) => h.date >= windowDays[0] && h.date <= windowDays.at(-1)!);
+  const baseline = before?.rows ?? inWindow[0]?.rows ?? 0;
+  const net = (inWindow.at(-1)?.rows ?? baseline) - (baseline ?? 0);
+  return { cells, net, snapshots: inWindow.length, changes, maxJump };
+}
+
+/**
+ * Et udsnit af datasæt, der har ændret sig i vinduet: ét pr. kilde, flest ændringsdage først.
+ * Spring over datasæt med spring på over 50 %, som typisk skyldes en afbrudt høstning.
+ */
+export function recentlyChanged(limit = 8): Dataset[] {
+  const best = new Map<string, { d: Dataset; changes: number; net: number }>();
+  for (const d of datasets) {
+    const w = windowHistory(d);
+    if (!w.changes || w.maxJump > 0.5) continue;
+    const cur = best.get(d.schema);
+    if (!cur || w.changes > cur.changes || (w.changes === cur.changes && Math.abs(w.net) > Math.abs(cur.net))) {
+      best.set(d.schema, { d, changes: w.changes, net: w.net });
+    }
+  }
+  return [...best.values()]
+    .sort((a, b) => b.changes - a.changes || Math.abs(b.net) - Math.abs(a.net))
+    .slice(0, limit)
+    .map((x) => x.d);
+}

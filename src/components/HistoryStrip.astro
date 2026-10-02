@@ -1,36 +1,29 @@
 ---
-import { datasets, sourceOf, shortTitle, datasetUrl, fmtInt, fmtDate, type Dataset } from '../lib/catalog';
+import {
+  datasets,
+  sourceOf,
+  shortTitle,
+  datasetUrl,
+  fmtInt,
+  fmtDate,
+  windowDays,
+  windowHistory,
+  type Dataset,
+} from '../lib/catalog';
 
 interface Props {
   ids?: string[];
+  list?: Dataset[];
   dataset?: Dataset;
 }
-const { ids = [], dataset } = Astro.props;
-const list = dataset ? [dataset] : ids.map((id) => datasets.find((d) => d.id === id)).filter((d): d is Dataset => !!d);
+const { ids = [], list: given, dataset } = Astro.props;
+const list = dataset
+  ? [dataset]
+  : given ?? ids.map((id) => datasets.find((d) => d.id === id)).filter((d): d is Dataset => !!d);
 
-// Fælles datoakse fra første til seneste snapshot i hele bucketen
-const allDates = [...new Set(datasets.flatMap((d) => d.snapshots))].sort();
-const first = new Date(allDates[0]);
-const last = new Date(allDates.at(-1)!);
-const days: string[] = [];
-for (let t = first; t <= last; t = new Date(t.getTime() + 864e5)) days.push(t.toISOString().slice(0, 10));
+// Datoaksen er den seneste uge, så strimlen altid viser det nyeste
+const days = windowDays;
 const short = (iso: string) => new Date(iso + 'T12:00:00Z').toLocaleDateString('da-DK', { day: 'numeric', month: 'short' });
-
-function rowsFor(d: Dataset) {
-  const byDate = new Map(d.history.map((h) => [h.date, h.rows]));
-  let prev: number | null = null;
-  const cells = days.map((day) => {
-    if (!byDate.has(day)) return { day, kind: 'none' as const };
-    const rows = byDate.get(day) ?? null;
-    const delta = prev != null && rows != null ? rows - prev : 0;
-    const kind = prev == null ? ('first' as const) : delta !== 0 ? ('change' as const) : ('same' as const);
-    prev = rows;
-    return { day, kind, rows, delta };
-  });
-  const hs = [...d.history].sort((a, b) => a.date.localeCompare(b.date));
-  const net = (hs.at(-1)?.rows ?? 0) - (hs[0]?.rows ?? 0);
-  return { cells, net, n: hs.length };
-}
 const sign = (n: number) => (n > 0 ? `+${fmtInt(n)}` : n < 0 ? `−${fmtInt(-n)}` : '±0');
 ---
 <figure class="hstrip" style={`--days:${days.length}`}>
@@ -39,17 +32,17 @@ const sign = (n: number) => (n > 0 ? `+${fmtInt(n)}` : n < 0 ? `−${fmtInt(-n)}
       <span class="name" role="columnheader">{dataset ? 'Snapshot' : 'Datasæt'}</span>
       <span class="cells" role="presentation">
         {days.map((day, i) => (
-          <span class="tick" role="columnheader">{i === 0 || i === days.length - 1 || i % 2 === 0 ? short(day) : ''}</span>
+          <span class="tick" role="columnheader">{(days.length - 1 - i) % 2 === 0 ? short(day) : ''}</span>
         ))}
       </span>
       <span class="net" role="columnheader">Ændring</span>
     </div>
     {list.map((d) => {
-      const { cells, net, n } = rowsFor(d);
+      const { cells, net, snapshots: n } = windowHistory(d);
       return (
         <div class="row" role="row" data-domain={sourceOf(d.schema).domain}>
           <span class="name" role="rowheader">
-            {dataset ? (n === 1 ? '1 snapshot' : `${n} snapshots`) : <a href={datasetUrl(d)}>{shortTitle(d)}</a>}
+            {dataset ? (n === 1 ? '1 snapshot i ugen' : `${n} snapshots i ugen`) : <a href={datasetUrl(d)}>{shortTitle(d)}</a>}
             {!dataset && <span class="src">{sourceOf(d.schema).name}</span>}
           </span>
           <span class="cells">
@@ -60,8 +53,8 @@ const sign = (n: number) => (n > 0 ? `+${fmtInt(n)}` : n < 0 ? `−${fmtInt(-n)}
                 <span
                   class={`cell ${c.kind}`}
                   role="cell"
-                  title={`${fmtDate(c.day)}: ${fmtInt(c.rows)} rækker${c.kind === 'change' ? ` (${sign(c.delta!)})` : ''}`}
-                  aria-label={`${short(c.day)}: ${fmtInt(c.rows)} rækker${c.kind === 'change' ? `, ${sign(c.delta!)}` : ''}`}
+                  title={`${fmtDate(c.day)}: ${fmtInt(c.rows)} rækker${c.kind === 'change' ? ` (${sign(c.delta)})` : ''}`}
+                  aria-label={`${short(c.day)}: ${fmtInt(c.rows)} rækker${c.kind === 'change' ? `, ${sign(c.delta)}` : ''}`}
                 />
               ),
             )}
@@ -72,6 +65,7 @@ const sign = (n: number) => (n > 0 ? `+${fmtInt(n)}` : n < 0 ? `−${fmtInt(-n)}
     })}
   </div>
   <figcaption>
+    <span class="period">{fmtDate(days[0])} til {fmtDate(days.at(-1)!)}</span>
     <span><i class="k first" /> Snapshot</span>
     <span><i class="k change" /> Rækketallet ændrede sig</span>
     <span><i class="k none" /> Intet snapshot den dag</span>
@@ -170,6 +164,10 @@ const sign = (n: number) => (n > 0 ? `+${fmtInt(n)}` : n < 0 ? `−${fmtInt(-n)}
     font-size: var(--t-xs);
     color: var(--ink-2);
     margin-top: 0.9rem;
+  }
+  .period {
+    font-weight: 600;
+    color: var(--ink);
   }
   figcaption span {
     display: inline-flex;
