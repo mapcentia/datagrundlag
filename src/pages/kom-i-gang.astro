@@ -15,7 +15,7 @@ const sections = [
 
 const direct = `-- Uden makro: læs alle snapshots og vælg det nyeste
 SELECT *
-FROM 's3://gc2-parquet/centia-io/dk/schema=dar/relation=postnummer/*/*.parquet'
+FROM 's3://datagrundlag/filer/dk/schema=dar/relation=postnummer/*/*.parquet'
 QUALIFY _gc2_snapshot_date = max(_gc2_snapshot_date) OVER ();`;
 
 const history = `-- Datasættet, som det så ud på en bestemt dato
@@ -38,7 +38,7 @@ ANTI JOIN dk('plandatadk', 'pdk_lokalplan_vedtaget_v') USING (planid);`;
 
 const rawHistory = `-- Uden makroer: læs alle snapshots via stien
 SELECT _gc2_snapshot_date, count(*)
-FROM 's3://gc2-parquet/centia-io/dk/schema=geodanmark/relation=kyst/*/*.parquet'
+FROM 's3://datagrundlag/filer/dk/schema=geodanmark/relation=kyst/*/*.parquet'
 GROUP BY ALL;`;
 
 const exportSql = `-- Gem et udtræk lokalt som GeoPackage, GeoJSON eller Parquet
@@ -68,20 +68,20 @@ from pyarrow import fs
 s3 = fs.S3FileSystem(anonymous=True, region="eu-west-1")
 
 # GeoParquet: stien uden "s3://", og et anonymt filsystem
-gdf = gpd.read_parquet("gc2-parquet/centia-io/dk/schema=.../data-....parquet", filesystem=s3)
+gdf = gpd.read_parquet("datagrundlag/filer/dk/schema=.../data-....parquet", filesystem=s3)
 
 # FlatGeobuf over HTTPS, kun et udsnit (EPSG:25832)
-gdf = gpd.read_file("https://gc2-parquet.s3.amazonaws.com/.../data-....fgb",
+gdf = gpd.read_file("https://datagrundlag.s3.eu-west-1.amazonaws.com/.../data-....fgb",
                     bbox=(720000, 6170000, 730000, 6180000))`;
 
 const stac = `# Hele kataloget: ét link pr. datasæt
-curl -s https://gc2-parquet.s3.amazonaws.com/centia-io/dk/catalog.json
+curl -s https://datagrundlag.s3.eu-west-1.amazonaws.com/filer/dk/catalog.json
 
 # Nyeste snapshot af et datasæt, med stier til filerne
-curl -s https://gc2-parquet.s3.amazonaws.com/centia-io/dk/schema=dar/relation=adresse/latest.json
+curl -s https://datagrundlag.s3.eu-west-1.amazonaws.com/filer/dk/schema=dar/relation=adresse/latest.json
 
 # Eller list bucketen direkte
-aws s3 ls --no-sign-request s3://gc2-parquet/centia-io/dk/schema=dar/`;
+aws s3 ls --no-sign-request s3://datagrundlag/filer/dk/schema=dar/`;
 
 const latest = `{
   "collection": "dar.adressepunkt",
@@ -109,7 +109,7 @@ WHERE the_geom_bbox.xmin BETWEEN 720000 AND 730000
         Alt ligger i én offentlig S3-bucket i regionen <code>eu-west-1</code>. Du skal ikke oprette en konto eller
         bruge nøgler. Du kan læse filerne med alt, der forstår Parquet, FlatGeobuf, S3 eller HTTPS.
       </p>
-      <CopyLine value="s3://gc2-parquet/centia-io/dk/" />
+      <CopyLine value="s3://datagrundlag/filer/dk/" />
     </header>
 
     <div class="layout">

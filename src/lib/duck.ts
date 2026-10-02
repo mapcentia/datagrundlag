@@ -26,7 +26,9 @@ async function start() {
     filesystem: { reliableHeadRequests: true, allowFullHTTPReads: false, forceFullHTTPReads: false },
   });
   const conn = await db.connect();
-  await conn.query('LOAD spatial;');
+  // icu indlæses med det samme: ellers fejler det første datoudtryk (fx current_date - INTERVAL 7 DAY)
+  // på en ny instans, mens udvidelsen hentes automatisk
+  await conn.query('LOAD spatial; LOAD icu;');
   await conn.close();
   return { db, worker };
 }
@@ -110,7 +112,17 @@ async function filesFor(fn: string, s: string, r: string, date?: string): Promis
   return [await fileFor(s, r, hit)];
 }
 
-const CALL = /\b(dk_alle|dk_at|dk)\s*\(\s*'([^']+)'\s*,\s*'([^']+)'\s*(?:,\s*'([^']+)'\s*)?\)/g;
+// Tredje argument til dk_at er enten en dato i anførselstegn ('2026-09-17') eller et udtryk
+// uden parenteser og kommaer (current_date - 7), som DuckDB selv evaluerer.
+const CALL = /\b(dk_alle|dk_at|dk)\s*\(\s*'([^']+)'\s*,\s*'([^']+)'\s*(?:,\s*(?:'([^']+)'|([^()',]+?))\s*)?\)/g;
+
+type Conn = Awaited<ReturnType<Db['connect']>>;
+
+/** Evaluerer et datoudtryk som current_date - 7 til 'YYYY-MM-DD'. */
+async function evalDate(conn: Conn, expr: string): Promise<string> {
+  const t = await conn.query(`SELECT strftime((${expr})::DATE, '%Y-%m-%d') AS d`);
+  return String(t.get(0)!.d);
+}
 
 /** Markerer hvilke tegn der er kode (ikke kommentarer, strenge eller citerede navne). */
 function codeMask(sql: string): boolean[] {
@@ -138,10 +150,19 @@ function codeMask(sql: string): boolean[] {
 }
 
 /** Erstatter dk()-kald i koden med read_parquet over de konkrete filer. */
-export async function resolveSql(sql: string) {
+export async function resolveSql(sql: string, conn?: Conn) {
   const mask = codeMask(sql);
   const calls = [...sql.matchAll(CALL)].filter((m) => mask[m.index!]);
-  const files = await Promise.all(calls.map((m) => filesFor(m[1], m[2], m[3], m[4])));
+  const files = await Promise.all(
+    calls.map(async (m) => {
+      let date = m[4];
+      if (m[5]) {
+        if (!conn) throw new Error(`Datoudtrykket ${m[5].trim()} kræver en DuckDB-forbindelse.`);
+        date = await evalDate(conn, m[5]);
+      }
+      return filesFor(m[1], m[2], m[3], date);
+    }),
+  );
   let resolved = '';
   let pos = 0;
   calls.forEach((m, i) => {
@@ -203,10 +224,10 @@ export async function run(sqlText: string, maxRows = 500): Promise<Result> {
 
 async function execute(sqlText: string, maxRows: number): Promise<Result> {
   const t0 = performance.now();
-  const { sql } = await resolveSql(stripCliSetup(sqlText));
   const { db } = await getDb();
   const conn = await db.connect();
   try {
+    const { sql } = await resolveSql(stripCliSetup(sqlText), conn);
     const table = await conn.query(sql);
     const fields = table.schema.fields;
     const rows: string[][] = [];

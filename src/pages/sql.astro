@@ -65,7 +65,10 @@ LIMIT 10;`;
           <dt><code>dk('kilde', 'datasæt')</code></dt>
           <dd>Nyeste snapshot.</dd>
           <dt><code>dk_at('kilde', 'datasæt', 'YYYY-MM-DD')</code></dt>
-          <dd>Datasættet, som det så ud på en dato. Historikken begynder {fmtDate(totals.first)}.</dd>
+          <dd>
+            Datasættet, som det så ud på en dato. Datoen kan også være et udtryk, fx <code>current_date - INTERVAL 7 DAY</code>.
+            Historikken begynder {fmtDate(totals.first)}.
+          </dd>
           <dt><code>dk_alle('kilde', 'datasæt')</code></dt>
           <dd>Alle snapshots med datoen i kolonnen <code>_gc2_snapshot_date</code>.</dd>
         </dl>

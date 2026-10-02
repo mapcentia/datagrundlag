@@ -1,5 +1,5 @@
 {
- "generated": "2026-09-25T09:49:36.338Z",
+ "generated": "2026-10-02T10:41:21.225Z",
  "examples": [
   {
    "title": "Hvilke Natura 2000-områder rummer flest rødlistede arter?",
@@ -13,7 +13,7 @@
     {
      "habitatområde": "Lovns Bredning, Hjarbæk Fjord og Skals, Simested og Nørre Ådal, Skravad Bæk",
      "rødlistearter": 180,
-     "fund": 2737
+     "fund": 2740
     },
     {
      "habitatområde": "Smålandsfarvandet nord for Lolland, Guldborg Sund, Bøtø Nor, Hyllekrog-Røds",
@@ -38,12 +38,12 @@
     {
      "habitatområde": "Løgstør Bredning, Vejlerne og Bulbjerg",
      "rødlistearter": 137,
-     "fund": 3864
+     "fund": 3865
     },
     {
      "habitatområde": "Rold Skov, Lindenborg Ådal og Madum Sø",
      "rødlistearter": 125,
-     "fund": 2526
+     "fund": 2528
     },
     {
      "habitatområde": "Almindingen, Ølene og Paradisbakkerne",
@@ -51,7 +51,7 @@
      "fund": 805
     }
    ],
-   "seconds": 3.2,
+   "seconds": 3.1,
    "slug": "roedlistearter-natura2000"
   },
   {
@@ -68,7 +68,7 @@
     {
      "kommune": "København",
      "adresser": 83959,
-     "på_v2_jord": 10688,
+     "på_v2_jord": 10700,
      "procent": 12.7
     },
     {
@@ -98,8 +98,8 @@
     {
      "kommune": "Brøndby",
      "adresser": 9984,
-     "på_v2_jord": 386,
-     "procent": 3.9
+     "på_v2_jord": 384,
+     "procent": 3.8
     },
     {
      "kommune": "Herlev",
@@ -114,7 +114,7 @@
      "procent": 3.3
     }
    ],
-   "seconds": 5.8,
+   "seconds": 5.2,
    "slug": "forurenet-jord-adresser"
   },
   {
@@ -128,54 +128,54 @@
    "rows": [
     {
      "kommune": "Ærø",
-     "bygninger": 11577,
+     "bygninger": 11576,
      "median_opførelsesår": 1924,
      "før_1900": 4006
     },
     {
      "kommune": "Frederiksberg",
-     "bygninger": 9492,
+     "bygninger": 9491,
      "median_opførelsesår": 1934,
      "før_1900": 1797
     },
     {
      "kommune": "Gentofte",
-     "bygninger": 31834,
+     "bygninger": 31838,
      "median_opførelsesår": 1936,
-     "før_1900": 7159
+     "før_1900": 7157
     },
     {
      "kommune": "København",
-     "bygninger": 82257,
+     "bygninger": 82259,
      "median_opførelsesår": 1950,
      "før_1900": 11613
     },
     {
      "kommune": "Bornholm",
-     "bygninger": 62472,
+     "bygninger": 62479,
      "median_opførelsesår": 1951,
-     "før_1900": 15736
+     "før_1900": 15735
     },
     {
      "kommune": "Lolland",
-     "bygninger": 60195,
+     "bygninger": 60199,
      "median_opførelsesår": 1955,
-     "før_1900": 14444
+     "før_1900": 14446
     },
     {
      "kommune": "Lyngby-Taarbæk",
-     "bygninger": 23615,
+     "bygninger": 23618,
      "median_opførelsesår": 1958,
-     "før_1900": 1673
+     "før_1900": 1670
     },
     {
      "kommune": "Langeland",
-     "bygninger": 26238,
+     "bygninger": 26242,
      "median_opførelsesår": 1960,
-     "før_1900": 4784
+     "før_1900": 4783
     }
    ],
-   "seconds": 2.6,
+   "seconds": 2.5,
    "slug": "bygningsalder-kommuner"
   },
   {
@@ -196,9 +196,9 @@
     },
     {
      "kommune": "København",
-     "ladepunkter": 6700,
+     "ladepunkter": 6711,
      "adresser": 83959,
-     "pr_1000_adresser": 79.8
+     "pr_1000_adresser": 79.9
     },
     {
      "kommune": "Frederiksberg",
@@ -208,9 +208,9 @@
     },
     {
      "kommune": "Tårnby",
-     "ladepunkter": 622,
+     "ladepunkter": 615,
      "adresser": 14413,
-     "pr_1000_adresser": 43.2
+     "pr_1000_adresser": 42.7
     },
     {
      "kommune": "Albertslund",
@@ -220,9 +220,9 @@
     },
     {
      "kommune": "Billund",
-     "ladepunkter": 658,
+     "ladepunkter": 657,
      "adresser": 16411,
-     "pr_1000_adresser": 40.1
+     "pr_1000_adresser": 40
     },
     {
      "kommune": "Brøndby",
@@ -237,85 +237,95 @@
      "pr_1000_adresser": 36.1
     }
    ],
-   "seconds": 6.5,
+   "seconds": 6,
    "slug": "ladepunkter-adresser"
   },
   {
-   "title": "Hvilke lokalplaner er vedtaget siden 17. september?",
+   "title": "Hvilke lokalplaner er vedtaget den seneste uge?",
    "datasets": [
     "plandatadk.pdk_lokalplan_vedtaget_v"
    ],
-   "lead": "Det samme datasæt læst på to datoer. Planer i det nyeste snapshot, som ikke fandtes i snapshottet fra 17. september, er kommet til siden. Skift datoen for at se en anden periode.",
+   "lead": "Det samme datasæt læst på to tidspunkter: i dag og for en uge siden. Planer i det nyeste snapshot, som ikke fandtes for en uge siden, er kommet til i løbet af ugen. Ret 7 DAY til fx 30 DAY for at se en anden periode.",
    "kind": "historik",
-   "sql": "SELECT ny.kommunenavn                                    AS kommune,\n       ny.plannavn                                       AS lokalplan,\n       strptime(ny.datovedt::VARCHAR, '%Y%m%d')::DATE    AS vedtaget\nFROM dk('plandatadk', 'pdk_lokalplan_vedtaget_v') ny\nANTI JOIN dk_at('plandatadk', 'pdk_lokalplan_vedtaget_v', '2026-09-17') gammel\n  USING (planid)\nORDER BY vedtaget DESC, kommune;",
+   "sql": "SELECT ny.kommunenavn                                    AS kommune,\n       ny.plannavn                                       AS lokalplan,\n       strptime(ny.datovedt::VARCHAR, '%Y%m%d')::DATE    AS vedtaget\nFROM dk('plandatadk', 'pdk_lokalplan_vedtaget_v') ny\nANTI JOIN dk_at('plandatadk', 'pdk_lokalplan_vedtaget_v', current_date - INTERVAL 7 DAY) gammel\n  USING (planid)\nORDER BY vedtaget DESC, kommune;",
    "rows": [
     {
-     "kommune": "Thisted",
-     "lokalplan": "Ophævelse af lokalplan 1.33 - Nordatlantens Hus, Hanstholm",
-     "vedtaget": "2026-09-23"
+     "kommune": "Haderslev",
+     "lokalplan": "Solenergianlæg ved Strandelhjørn",
+     "vedtaget": "2026-09-29"
     },
     {
-     "kommune": "Mariagerfjord",
-     "lokalplan": "Døgninstitution ved Ølsvej i Hobro",
-     "vedtaget": "2026-09-18"
+     "kommune": "Hjørring",
+     "lokalplan": "Regulering af sekundær bebyggelse ved Høngårds Ager (tillæg til lokalplan 10.000-04)",
+     "vedtaget": "2026-09-29"
     },
     {
-     "kommune": "Glostrup",
-     "lokalplan": "Daginstitution på Mosetoften",
-     "vedtaget": "2026-09-16"
+     "kommune": "Gentofte",
+     "lokalplan": "Nybrovej 75, nyt domicil for Arp-Hansen",
+     "vedtaget": "2026-09-28"
     },
     {
-     "kommune": "Høje-Taastrup",
-     "lokalplan": "For et område mellem Hovedgaden og Kallerupvej",
-     "vedtaget": "2026-09-16"
+     "kommune": "Gentofte",
+     "lokalplan": "for Ordrup Gymnasium",
+     "vedtaget": "2026-09-28"
     },
     {
-     "kommune": "Aalborg",
-     "lokalplan": "Højspændingsstation - Nordjyllandsværket",
-     "vedtaget": "2026-09-15"
+     "kommune": "Nyborg",
+     "lokalplan": "Område til ladepark ved Hjulby",
+     "vedtaget": "2026-09-28"
     },
     {
-     "kommune": "Allerød",
-     "lokalplan": "Vassingerød Erhvervsområde",
-     "vedtaget": "2026-09-15"
+     "kommune": "Nordfyns",
+     "lokalplan": "Bryggergården",
+     "vedtaget": "2026-09-24"
     },
     {
-     "kommune": "Herning",
-     "lokalplan": "Boligområde ved Engholm Søpark i Herning",
-     "vedtaget": "2026-09-15"
+     "kommune": "Nordfyns",
+     "lokalplan": "Bogense Forsyning",
+     "vedtaget": "2026-09-24"
     },
     {
-     "kommune": "Esbjerg",
-     "lokalplan": "Tæt - Lav boligbebyggelse ved Andrupgård, Esbjerg Ø",
-     "vedtaget": "2026-09-14"
+     "kommune": "Tønder",
+     "lokalplan": "Højspændingssamlestation ved  Galgemark, Bredebro",
+     "vedtaget": "2026-09-24"
     },
     {
-     "kommune": "Greve",
-     "lokalplan": "Tillæg nr. 2 til Lokalplan nr. 12.50  for strandvejsområdet",
-     "vedtaget": "2026-09-14"
-    },
-    {
-     "kommune": "Langeland",
-     "lokalplan": "Nyt boligområde i Bagenkop",
-     "vedtaget": "2026-09-14"
+     "kommune": "Tønder",
+     "lokalplan": "Bredebro II solenergipark",
+     "vedtaget": "2026-09-24"
     },
     {
      "kommune": "Gladsaxe",
-     "lokalplan": "Stengård Skole",
-     "vedtaget": "2026-08-26"
+     "lokalplan": "Offentlige formål ved Pilegårdsvej i Mørkhøj",
+     "vedtaget": "2026-09-23"
     },
     {
-     "kommune": "Sønderborg",
-     "lokalplan": "Solcelleanlæg ved Lavensby, Nordborg",
-     "vedtaget": "2026-08-26"
+     "kommune": "Gribskov",
+     "lokalplan": "Lokalplan for en del af Ørby Landsby",
+     "vedtaget": "2026-09-22"
     },
     {
-     "kommune": "Hvidovre",
-     "lokalplan": "Erhvervsområdet ved Gungevej, Arnold Nielsens Boulevard, Bibliotekvej og Høvedstensvej",
-     "vedtaget": "2026-08-25"
+     "kommune": "Kolding",
+     "lokalplan": "Ved Lærkevej - et område til offentlige formål",
+     "vedtaget": "2026-09-22"
+    },
+    {
+     "kommune": "Ringkøbing-Skjern",
+     "lokalplan": "Område til rekreative formål ved Nyhavn, Søndervig",
+     "vedtaget": "2026-09-22"
+    },
+    {
+     "kommune": "Ringkøbing-Skjern",
+     "lokalplan": "Område til offentlige formål ved Idrætsvej, Lyne",
+     "vedtaget": "2026-09-22"
+    },
+    {
+     "kommune": "Frederikssund",
+     "lokalplan": "Lokalplan for Banegrav ved Bonderup",
+     "vedtaget": "2026-09-08"
     }
    ],
-   "seconds": 1.7,
+   "seconds": 1.8,
    "slug": "nye-lokalplaner"
   }
  ]

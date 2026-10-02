@@ -4,9 +4,11 @@
 //   node scripts/fetch-catalog.mjs
 import { writeFile, mkdir } from 'node:fs/promises';
 
-const BUCKET = 'gc2-parquet';
-const PREFIX = 'centia-io/dk';
-const HTTP_ROOT = `https://${BUCKET}.s3.amazonaws.com/${PREFIX}`;
+const BUCKET = 'datagrundlag';
+const PREFIX = 'filer/dk';
+// Regional adresse: virker altid, også mens den globale (bucket.s3.amazonaws.com) omdirigerer
+const HTTP_HOST = `https://${BUCKET}.s3.eu-west-1.amazonaws.com`;
+const HTTP_ROOT = `${HTTP_HOST}/${PREFIX}`;
 const S3_ROOT = `s3://${BUCKET}/${PREFIX}`;
 const CONCURRENCY = 24;
 
@@ -83,7 +85,7 @@ async function harvest(link) {
     const fmt = a.type.includes('flatgeobuf') ? 'fgb' : 'parquet';
     assets[fmt] = {
       http,
-      s3: http.replace(`https://${BUCKET}.s3.amazonaws.com`, `s3://${BUCKET}`),
+      s3: http.replace(HTTP_HOST, `s3://${BUCKET}`),
       size: await size(http),
     };
   }
@@ -118,6 +120,18 @@ console.log(`  ${children.length} collections`);
 
 const datasets = (await pool(children, harvest)).filter(Boolean);
 datasets.sort((a, b) => a.id.localeCompare(b.id, 'da'));
+
+// Kan en større del af datasættene ikke hentes (fx midt i en synkronisering af bucketen),
+// stoppes der, så et halvt katalog ikke bliver udgivet. Netlify beholder så det forrige deploy.
+const failed = children.length - datasets.length;
+const MAX_FAILED = Number(process.env.MAX_FAILED_SHARE ?? 0.02);
+if (failed / children.length > MAX_FAILED) {
+  console.error(
+    `Stopper: ${failed} af ${children.length} datasæt kunne ikke hentes (grænse ${MAX_FAILED * 100} %). ` +
+      'src/data/catalog.json er ikke ændret.',
+  );
+  process.exit(1);
+}
 
 await mkdir(new URL('../src/data/', import.meta.url), { recursive: true });
 await writeFile(

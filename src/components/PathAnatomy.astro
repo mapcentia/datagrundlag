@@ -3,8 +3,8 @@ import { datasets } from '../lib/catalog';
 const d = datasets.find((x) => x.id === 'bbr.bygning')!;
 const file = d.assets.parquet!.s3.split('/').at(-1)!;
 const parts = [
-  { text: 's3://gc2-parquet/', note: 'Offentlig bucket i eu-west-1. Ingen login eller nøgler.' },
-  { text: 'centia-io/dk/', note: 'Databasen. Her ligger catalog.json, roden i STAC-kataloget.' },
+  { text: 's3://datagrundlag/', note: 'Offentlig bucket i eu-west-1. Ingen login eller nøgler.' },
+  { text: 'filer/dk/', note: 'Databasen dk. Her ligger catalog.json, roden i STAC-kataloget.' },
   { text: `schema=${d.schema}/`, note: 'Kilden, fx BBR, DAR eller Matriklen.' },
   { text: `relation=${d.relation}/`, note: 'Datasættet. collection.json og latest.json peger på nyeste snapshot.' },
   { text: `_gc2_snapshot_date=${d.latest}/`, note: 'Et snapshot pr. dato. Gamle snapshots bliver liggende, og DuckDB læser datoen som en kolonne.' },

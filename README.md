@@ -1,7 +1,7 @@
 # datagrundlag.dk
 
 Front til Centia-databasen `dk`, der høster danske grunddata og publicerer snapshots som GeoParquet og
-FlatGeobuf i den offentlige bucket `s3://gc2-parquet/centia-io/dk/` (eu-west-1, anonym adgang).
+FlatGeobuf i den offentlige bucket `s3://datagrundlag/filer/dk/` (eu-west-1, anonym adgang).
 
 Sitet er statisk og bygget med [Astro](https://astro.build). Alt indhold genereres ud fra bucketen:
 
@@ -53,7 +53,7 @@ Eksemplerne har en "Kør i browseren"-knap, og `/sql/` er en SQL-editor. Begge b
 Det kræver, at bucketen tillader `HEAD` og eksponerer `Content-Range` via CORS:
 
 ```sh
-aws s3api put-bucket-cors --bucket gc2-parquet --cors-configuration file://scripts/s3-cors.json
+aws s3api put-bucket-cors --bucket datagrundlag --cors-configuration file://scripts/s3-cors.json
 ```
 
 Til lokal test mod en anden kilde (fx en CORS-proxy) kan `PUBLIC_DATA_BASE` sættes ved build.

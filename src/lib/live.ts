@@ -3,7 +3,7 @@
 // Indtil det er på plads, forbliver alle live-funktioner skjulte.
 
 export const DATA_BASE: string =
-  import.meta.env.PUBLIC_DATA_BASE ?? 'https://gc2-parquet.s3.amazonaws.com/centia-io/dk';
+  import.meta.env.PUBLIC_DATA_BASE ?? 'https://datagrundlag.s3.eu-west-1.amazonaws.com/filer/dk';
 
 const KEY = `dg-live:${DATA_BASE}`;
 
