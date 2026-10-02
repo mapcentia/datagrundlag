@@ -15,9 +15,8 @@ const groups = bySchema().sort((a, b) => a.source.name.localeCompare(b.source.na
 
       <h2>Sådan virker det</h2>
       <p>
-        Data høstes løbende til <a href="https://centia.io">Centia</a>-databasen <code>dk</code>, der er en PostGIS-database
-        med én schema pr. kilde. Herfra laver Centia snapshots af hvert datasæt. Et snapshot er en fastfrosset kopi,
-        der skrives til S3 som GeoParquet 1.1 og, når datasættet har geometri, som FlatGeobuf. Hvert snapshot beskrives
+        Data høstes løbende til en GC2 database. Herfra laver GC2 snapshots af hvert datasæt. Et snapshot er en fastfrosset kopi,
+        der skrives til S3 som GeoParquet 1.1 og, når datasættet har geometri og er tilvalgt, som FlatGeobuf. Hvert snapshot beskrives
         med STAC-metadata med udstrækning, rækketal og skema.
       </p>
       <p>

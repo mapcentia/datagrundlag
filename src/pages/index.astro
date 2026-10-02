@@ -43,7 +43,7 @@ LIMIT 5;`;
       <h1>Danske grunddata som filer, du selv kan forespørge</h1>
       <p class="lead">
         {totals.datasets} datasæt fra {totals.sources} offentlige kilder ligger samlet i én offentlig S3-bucket som
-        GeoParquet og FlatGeobuf. Det dækker adresser, bygninger, matrikler, virksomheder, natur, grundvand og planer.
+        GeoParquet og FlatGeobuf. Det dækker adresser, bygninger, matrikler, virksomheder, natur, grundvand, kommunale fagdata og planer.
         Hvert datasæt gemmes som daterede snapshots, så du også kan gå tilbage i tid. Du behøver ikke API-nøgler
         eller paginering. Peg DuckDB, QGIS eller Python på filerne, og kombinér dem frit.
       </p>
@@ -74,7 +74,7 @@ LIMIT 5;`;
       </p>
       <p>
         Her ligger det hele side om side i samme format og samme koordinatsystem (ETRS89 / UTM32). Et join mellem BBR og
-        Naturdatabasen er lige så nemt som et join mellem to tabeller i samme database, for det er i praksis det, det er.
+        Naturdatabasen er lige så nemt som et join mellem to tabeller i samme database, hvilket Datagrundlag er.
       </p>
     </div>
     <ul class="why-points">
@@ -122,7 +122,7 @@ LIMIT 5;`;
     <div class="section-head">
       <h2>Analyser på tværs af registre</h2>
       <p class="muted">
-        Forespørgslerne herunder køres, hver gang sitet bygges, direkte mod bucketen. Tallene er ægte, og SQL'en kan
+        Forespørgslerne herunder køres, hver dag, direkte mod bucketen. Tallene er ægte, og SQL'en kan
         kopieres ind i din egen DuckDB.
       </p>
     </div>
