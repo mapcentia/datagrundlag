@@ -29,7 +29,6 @@ const src = sourceOf(d.schema);
 const desc = descriptionOf(d);
 const siblings = datasets.filter((x) => x.schema === d.schema && x.id !== d.id);
 const pq = d.assets.parquet;
-const fgb = d.assets.fgb;
 const geom = d.geometry?.column;
 const isUtm = d.srs === 'EPSG:25832';
 
@@ -78,19 +77,19 @@ SELECT _gc2_snapshot_date, count(*)
 FROM '${d.s3Prefix}*/*.parquet'
 GROUP BY ALL ORDER BY 1;`;
 
-const py = fgb
+const py = geom
   ? `import geopandas as gpd
-
-# FlatGeobuf har et rumligt indeks, så kun det valgte område hentes
-url = "${fgb.http}"
-gdf = gpd.read_file(url, bbox=(720000, 6170000, 730000, 6180000))  # København, EPSG:25832
-
-# Hele datasættet som GeoParquet
 from pyarrow import fs
-gdf = gpd.read_parquet(
-    "${pq?.s3.replace('s3://', '')}",
-    filesystem=fs.S3FileSystem(anonymous=True, region="eu-west-1"),
-)`
+
+s3 = fs.S3FileSystem(anonymous=True, region="eu-west-1")
+path = "${pq?.s3.replace('s3://', '')}"
+
+# Filen har en bbox-kolonne, så kun det valgte område hentes
+gdf = gpd.read_parquet(path, filesystem=s3,
+                       bbox=(720000, 6170000, 730000, 6180000))  # København, EPSG:25832
+
+# Hele datasættet
+gdf = gpd.read_parquet(path, filesystem=s3)`
   : `import pandas as pd
 from pyarrow import fs
 
@@ -99,14 +98,15 @@ df = pd.read_parquet(
     filesystem=fs.S3FileSystem(anonymous=True, region="eu-west-1"),
 )`;
 
-const gdal = fgb
-  ? `# Info om laget direkte over HTTP
-ogrinfo -so -al /vsicurl/${fgb.http}
+const gdal = geom
+  ? `# Kræver GDAL med Parquet-driveren (GDAL 3.5+)
+# Info om laget direkte over HTTP
+ogrinfo -so -al /vsicurl/${pq?.http}
 
 # Klip et område ud og gem som GeoPackage
 ogr2ogr -f GPKG ${d.relation}.gpkg \\
   -spat 720000 6170000 730000 6180000 \\
-  /vsicurl/${fgb.http}`
+  /vsicurl/${pq?.http}`
   : `# Kræver GDAL med Parquet-driveren (GDAL 3.5+)
 ogr2ogr -f CSV ${d.relation}.csv /vsicurl/${pq?.http}`;
 
@@ -142,7 +142,7 @@ ANTI JOIN dk(${rel}) USING (${keyCol});`
 const typeName = (t: string) =>
   t.startsWith('geometry') ? t.replace('geometry', 'geometry ') : t.replace('character varying', 'tekst').replace('timestamp with time zone', 'tidsstempel');
 ---
-<Base title={d.title} description={desc ? plainText(desc) : `${d.title}: ${fmtInt(d.rows)} rækker som GeoParquet${fgb ? ' og FlatGeobuf' : ''}. Kilde: ${src.full}${src.owner ? ` (${src.owner})` : ''}.`}>
+<Base title={d.title} description={desc ? plainText(desc) : `${d.title}: ${fmtInt(d.rows)} rækker som Parquet. Kilde: ${src.full}${src.owner ? ` (${src.owner})` : ''}.`}>
   <div class="wrap page">
     <nav class="crumbs" aria-label="Brødkrummer">
       <a href="/data/">Data</a>
@@ -224,21 +224,11 @@ const typeName = (t: string) =>
         {pq && (
           <li>
             <div class="file-meta">
-              <strong>GeoParquet</strong>
+              <strong>Parquet</strong>
               <span class="muted num">{fmtBytes(pq.size)}</span>
               <a href={pq.http} download>Download</a>
             </div>
             <CopyLine value={pq.s3} />
-          </li>
-        )}
-        {fgb && (
-          <li>
-            <div class="file-meta">
-              <strong>FlatGeobuf</strong>
-              <span class="muted num">{fmtBytes(fgb.size)}</span>
-              <a href={fgb.http} download>Download</a>
-            </div>
-            <CopyLine value={fgb.http} />
           </li>
         )}
       </ul>
@@ -261,20 +251,20 @@ const typeName = (t: string) =>
         <div role="tabpanel"><CodeBlock code={duckRaw} /></div>
         <div role="tabpanel"><CodeBlock code={py} lang="python" /></div>
         <div role="tabpanel" class="prose">
-          {fgb ? (
+          {geom ? (
             <ol>
               <li>Vælg <strong>Lag › Tilføj lag › Tilføj vektorlag</strong>.</li>
-              <li>Sæt kildetype til <strong>Protokol: HTTP(S), cloud osv.</strong></li>
-              <li>Indsæt URL'en og tryk <strong>Tilføj</strong>:</li>
+              <li>Sæt kildetype til <strong>Fil</strong>.</li>
+              <li>Indsæt stien som kilde og tryk <strong>Tilføj</strong>:</li>
             </ol>
           ) : (
-            <p>Datasættet har ingen geometri. I QGIS kan GeoParquet-filen åbnes som tabel, hvis din QGIS har GDAL's Parquet-driver.</p>
+            <p>Datasættet har ingen geometri. I QGIS kan Parquet-filen åbnes som tabel, hvis din QGIS har GDAL's Parquet-driver.</p>
           )}
-          <CopyLine value={fgb ? fgb.http : pq!.http} />
-          {fgb && (
+          <CopyLine value={`/vsicurl/${pq!.http}`} />
+          {geom && (
             <p class="muted">
-              FlatGeobuf har et rumligt indeks, så QGIS henter kun de features, der er i kortudsnittet. Det er derfor
-              hurtigt, også for store lag. GeoParquet virker også i QGIS 3.34+, hvis din GDAL har Parquet-driveren.
+              Kræver QGIS 3.34+ med GDAL's Parquet-driver. Den er med i OSGeo4W-installationen på Windows og i
+              conda-forge.
             </p>
           )}
         </div>

@@ -67,12 +67,12 @@ from pyarrow import fs
 
 s3 = fs.S3FileSystem(anonymous=True, region="eu-west-1")
 
-# GeoParquet: stien uden "s3://", og et anonymt filsystem
-gdf = gpd.read_parquet("datagrundlag/filer/dk/schema=.../data-....parquet", filesystem=s3)
+# Parquet: stien uden "s3://", og et anonymt filsystem
+path = "datagrundlag/filer/dk/schema=.../data-....parquet"
+gdf = gpd.read_parquet(path, filesystem=s3)
 
-# FlatGeobuf over HTTPS, kun et udsnit (EPSG:25832)
-gdf = gpd.read_file("https://datagrundlag.s3.eu-west-1.amazonaws.com/.../data-....fgb",
-                    bbox=(720000, 6170000, 730000, 6180000))`;
+# Kun et udsnit (EPSG:25832). bbox-kolonnen gør, at resten ikke hentes
+gdf = gpd.read_parquet(path, filesystem=s3, bbox=(720000, 6170000, 730000, 6180000))`;
 
 const stac = `# Hele kataloget: ét link pr. datasæt
 curl -s https://datagrundlag.s3.eu-west-1.amazonaws.com/filer/dk/catalog.json
@@ -88,9 +88,8 @@ const latest = `{
   "snapshot_date": "2026-09-22",
   "item": "./_gc2_snapshot_date=2026-09-22/item.json",
   "assets": {
-    "data":       { "href": "./_gc2_snapshot_date=2026-09-22/data-….parquet" },
-    "flatgeobuf": { "href": "./_gc2_snapshot_date=2026-09-22/data-….fgb" },
-    "metadata":   { "href": "./_gc2_snapshot_date=2026-09-22/metadata-….json" }
+    "data":     { "href": "./_gc2_snapshot_date=2026-09-22/data-….parquet" },
+    "metadata": { "href": "./_gc2_snapshot_date=2026-09-22/metadata-….json" }
   }
 }`;
 
@@ -107,7 +106,7 @@ WHERE the_geom_bbox.xmin BETWEEN 720000 AND 730000
       <h1>Kom i gang</h1>
       <p class="lead">
         Alt ligger i én offentlig S3-bucket i regionen <code>eu-west-1</code>. Du skal ikke oprette en konto eller
-        bruge nøgler. Du kan læse filerne med alt, der forstår Parquet, FlatGeobuf, S3 eller HTTPS.
+        bruge nøgler. Du kan læse filerne med alt, der forstår Parquet, S3 eller HTTPS.
       </p>
       <CopyLine value="s3://datagrundlag/filer/dk/" />
     </header>
@@ -123,7 +122,7 @@ WHERE the_geom_bbox.xmin BETWEEN 720000 AND 730000
         <section id="duckdb">
           <h2>DuckDB</h2>
           <p>
-            <a href="https://duckdb.org/docs/installation/">DuckDB</a> er den hurtigste vej ind. Den læser GeoParquet
+            <a href="https://duckdb.org/docs/installation/">DuckDB</a> er den hurtigste vej ind. Den læser Parquet
             direkte fra S3, forstår geometrikolonnen og kan joine datasæt fra forskellige kilder i én forespørgsel.
           </p>
           <h3>1. Indlæs udvidelser og makroen <code>dk()</code></h3>
@@ -174,19 +173,14 @@ WHERE the_geom_bbox.xmin BETWEEN 720000 AND 730000
         <section id="qgis">
           <h2>QGIS</h2>
           <p>
-            Brug FlatGeobuf-filerne i QGIS. De har et rumligt indeks, så QGIS kun henter de features, der er i
-            kortudsnittet. Selv store lag som matrikelskel og BBR-bygninger åbner hurtigt.
+            QGIS 3.34+ kan åbne Parquet-filerne direkte fra bucketen, når GDAL er bygget med Parquet-driveren.
+            Det er den i OSGeo4W-installationen på Windows og i conda-forge.
           </p>
           <ol class="steps">
-            <li>Find datasættet i <a href="/data/">kataloget</a> og kopiér FlatGeobuf-URL'en.</li>
+            <li>Find datasættet i <a href="/data/">kataloget</a> og kopiér stien under fanen QGIS.</li>
             <li>Vælg <strong>Lag › Tilføj lag › Tilføj vektorlag</strong> i QGIS.</li>
-            <li>Vælg kildetypen <strong>Protokol: HTTP(S), cloud osv.</strong>, indsæt URL'en og tryk <strong>Tilføj</strong>.</li>
+            <li>Vælg kildetypen <strong>Fil</strong>, indsæt stien (HTTPS-URL'en med <code>/vsicurl/</code> foran) og tryk <strong>Tilføj</strong>.</li>
           </ol>
-          <p>
-            Vil du hellere arbejde med GeoParquet, kan QGIS 3.34+ åbne filerne, når GDAL er bygget med Parquet-driveren.
-            Det er den i OSGeo4W-installationen på Windows og i conda-forge. Vælg kildetypen <strong>Fil</strong> og
-            indsæt <code>/vsicurl/</code> foran HTTPS-URL'en.
-          </p>
           <p class="muted">
             Husk, at URL'en peger på et bestemt snapshot. Når datasættet høstes igen, ligger det nye snapshot under et nyt
             filnavn, mens det gamle bliver liggende.
@@ -197,7 +191,7 @@ WHERE the_geom_bbox.xmin BETWEEN 720000 AND 730000
           <h2>Python</h2>
           <p>Med DuckDB i Python kan du genbruge SQL'en fra eksemplerne og få resultatet som en DataFrame:</p>
           <CodeBlock code={py} lang="python" caption="pip install duckdb" />
-          <p>GeoPandas kan læse begge formater direkte:</p>
+          <p>GeoPandas kan læse filerne direkte:</p>
           <CodeBlock code={gpd} lang="python" caption="pip install geopandas pyarrow" />
         </section>
 

@@ -10,7 +10,7 @@ interface Props {
 }
 const {
   title,
-  description = 'Danske grunddata som åbne GeoParquet- og FlatGeobuf-filer i en offentlig S3-bucket. Analysér adresser, bygninger, matrikler, natur og planer på tværs med DuckDB, QGIS eller Python.',
+  description = 'Danske grunddata som åbne Parquet-filer i en offentlig S3-bucket. Analysér adresser, bygninger, matrikler, natur og planer på tværs med DuckDB, QGIS eller Python.',
 } = Astro.props;
 const fullTitle = title ? `${title} | datagrundlag.dk` : 'datagrundlag.dk – danske grunddata som filer';
 const path = Astro.url.pathname;

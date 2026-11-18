@@ -34,7 +34,7 @@ LIMIT 5;`;
       <h1>Danske grunddata som filer, du selv kan forespørge</h1>
       <p class="lead">
         {totals.datasets} datasæt fra {totals.sources} offentlige kilder ligger samlet i én offentlig S3-bucket som
-        GeoParquet og FlatGeobuf. Det dækker adresser, bygninger, matrikler, virksomheder, natur, grundvand, kommunale fagdata og planer.
+        Parquet. Det dækker adresser, bygninger, matrikler, virksomheder, natur, grundvand, kommunale fagdata og planer.
         Hvert datasæt gemmes som daterede snapshots, så du også kan gå tilbage i tid. Du behøver ikke API-nøgler
         eller paginering. Peg DuckDB, QGIS eller Python på filerne, og kombinér dem frit.
       </p>
@@ -45,7 +45,7 @@ LIMIT 5;`;
       </div>
       <dl class="facts">
         <div><dt>Rækker</dt><dd class="num">{fmtCompact(totals.rows)}</dd></div>
-        <div><dt>GeoParquet</dt><dd class="num">{fmtBytes(totals.bytes)}</dd></div>
+        <div><dt>Parquet</dt><dd class="num">{fmtBytes(totals.bytes)}</dd></div>
         <div><dt>Snapshots</dt><dd class="num">{fmtInt(totals.snapshots)}</dd></div>
         <div><dt>Historik siden</dt><dd>{fmtDate(totals.first)}</dd></div>
       </dl>
@@ -151,8 +151,7 @@ LIMIT 5;`;
         henter DAGI's kommunegrænser fra bucketen og beregner arealet.
       </p>
       <p>
-        Skal du bruge data i QGIS, så åbn FlatGeobuf-filen via dens URL. QGIS henter kun de features, der er inden for
-        kortudsnittet.
+        Skal du bruge data i QGIS, så åbn Parquet-filen direkte fra bucketen. Vejledningen viser hvordan.
       </p>
       <a class="btn ghost" href="/kom-i-gang/">Læs hele vejledningen</a>
     </div>

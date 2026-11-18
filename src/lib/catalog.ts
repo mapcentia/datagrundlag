@@ -18,7 +18,7 @@ export interface Dataset {
   latest: string;
   snapshots: string[];
   history: { date: string; rows: number | null }[];
-  assets: { parquet?: Asset; fgb?: Asset };
+  assets: { parquet?: Asset };
   columns: { name: string; type: string }[];
   geometry: { column: string; type: string } | null;
   s3Prefix: string;
@@ -65,6 +65,7 @@ export const sources: Record<string, Source> = {
   grukos: { name: 'GRUKOS', full: 'Grundvandskortlægning', owner: 'Miljøstyrelsen', domain: 'natur' },
   geus: { name: 'Jupiter', full: 'Boringer og vandindvinding', owner: 'GEUS', domain: 'natur' },
   puls: { name: 'PULS', full: 'Badevand, renseanlæg og akvakultur', owner: 'Danmarks Miljøportal', domain: 'natur' },
+  vandomraadeplaner: { name: 'Vandområdeplanerne', full: 'Vandløb, søer, kystvande og grundvand 2021-2027', owner: 'Miljøstyrelsen', domain: 'natur' },
   kystatlas: { name: 'Kystatlas', full: 'Erosion og kystlinjer', owner: 'Kystdirektoratet', domain: 'kyst' },
   redningsnumre: { name: 'Redningsnumre', full: 'Strandnumre og redningsveje', owner: 'Kystdirektoratet', domain: 'kyst' },
   landbrugsdrift: { name: 'Landbrugsdrift', full: 'Jordtyper, lavbund og hældning', owner: 'Landbrugsstyrelsen', domain: 'kyst' },

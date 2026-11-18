@@ -1,7 +1,7 @@
 # datagrundlag.dk
 
-Front til GC2-databasen `dk`, der høster danske grunddata og publicerer snapshots som GeoParquet og
-FlatGeobuf i den offentlige bucket `s3://datagrundlag/filer/dk/` (eu-west-1, anonym adgang).
+Front til GC2-databasen `dk`, der høster danske grunddata og publicerer snapshots som Parquet
+i den offentlige bucket `s3://datagrundlag/filer/dk/` (eu-west-1, anonym adgang).
 
 Sitet er statisk og bygget med [Astro](https://astro.build). Alt indhold genereres ud fra bucketen:
 

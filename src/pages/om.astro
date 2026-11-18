@@ -16,7 +16,7 @@ const groups = bySchema().sort((a, b) => a.source.name.localeCompare(b.source.na
       <h2>Sådan virker det</h2>
       <p>
         Data høstes løbende til en GC2 database. Herfra laver GC2 snapshots af hvert datasæt. Et snapshot er en fastfrosset kopi,
-        der skrives til S3 som GeoParquet 1.1 og, når datasættet har geometri og er tilvalgt, som FlatGeobuf. Hvert snapshot beskrives
+        der skrives til S3 som Parquet; datasæt med geometri følger GeoParquet 1.1. Hvert snapshot beskrives
         med STAC-metadata med udstrækning, rækketal og skema.
       </p>
       <p>
@@ -47,7 +47,7 @@ const groups = bySchema().sort((a, b) => a.source.name.localeCompare(b.source.na
               <th>Dataansvarlig</th>
               <th class="n">Datasæt</th>
               <th class="n">Rækker</th>
-              <th class="n">GeoParquet</th>
+              <th class="n">Parquet</th>
             </tr>
           </thead>
           <tbody>

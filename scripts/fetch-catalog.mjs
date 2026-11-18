@@ -80,10 +80,10 @@ async function harvest(link) {
 
   const assets = {};
   for (const [key, a] of Object.entries(latest.assets)) {
-    if (key === 'metadata') continue;
+    // FlatGeobuf udgives ikke længere; ældre snapshots kan stadig pege på en .fgb
+    if (key === 'metadata' || a.type.includes('flatgeobuf')) continue;
     const http = resolve(dir, a.href);
-    const fmt = a.type.includes('flatgeobuf') ? 'fgb' : 'parquet';
-    assets[fmt] = {
+    assets.parquet = {
       http,
       s3: http.replace(HTTP_HOST, `s3://${BUCKET}`),
       size: await size(http),

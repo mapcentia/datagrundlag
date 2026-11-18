@@ -8,7 +8,7 @@ const parts = [
   { text: `schema=${d.schema}/`, note: 'Kilden, fx BBR, DAR eller Matriklen.' },
   { text: `relation=${d.relation}/`, note: 'Datasættet. collection.json og latest.json peger på nyeste snapshot.' },
   { text: `_gc2_snapshot_date=${d.latest}/`, note: 'Et snapshot pr. dato. Gamle snapshots bliver liggende, og DuckDB læser datoen som en kolonne.' },
-  { text: file, note: 'GeoParquet 1.1 med bbox-kolonne. Ved siden af ligger .fgb og metadata.' },
+  { text: file, note: 'Parquet. Datasæt med geometri er GeoParquet 1.1 med bbox-kolonne. Ved siden af ligger metadata.' },
 ];
 ---
 <figure class="anatomy">
