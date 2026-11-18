@@ -84,6 +84,8 @@ export const sources: Record<string, Source> = {
   jordbrugsanalyser: { name: 'Jordbrugsanalyser', full: 'Husdyr og markblokke pr. sogn', owner: 'Aarhus Universitet', domain: 'kyst' },
   geodanmark: { name: 'GeoDanmark', full: 'Det fælles topografiske grundkort', owner: 'Klimadatastyrelsen og kommunerne', domain: 'kort' },
   plandatadk: { name: 'Plandata.dk', full: 'Lokalplaner, kommuneplanrammer og zoner', owner: 'Plan- og Landdistriktsstyrelsen', domain: 'kort' },
+  fingerplan: { name: 'Fingerplan', full: 'Fingerplan 2019 for hovedstadsområdet', owner: 'Plan- og Landdistriktsstyrelsen', domain: 'kort' },
+  landsplandirektiver: { name: 'Landsplandirektiver', full: 'Sommerhusområder, udviklingsområder og detailhandel', owner: 'Plan- og Landdistriktsstyrelsen', domain: 'kort' },
   geofa: { name: 'GeoFA', full: 'Kommunale fagdata', owner: 'Kommunerne (FKG)', domain: 'kort' },
   energinet: { name: 'Energinet', full: 'El- og gastransmissionsnettet', owner: 'Energinet', domain: 'kort' },
   banedanmark: { name: 'Banedanmark', full: 'Nationale interesseområder ved jernbanen', owner: 'Banedanmark', domain: 'kort' },
